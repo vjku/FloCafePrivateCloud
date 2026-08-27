@@ -44,6 +44,7 @@ import {
   isWindowRendererReady,
 } from './window-readiness';
 import { setupWindowLoadRetry } from './window-load-retry';
+import { registerUsbDevicePermissions } from './usb-device-permissions';
 import {
   createShutdownCoordinator,
   createShutdownEntrypoints,
@@ -360,6 +361,12 @@ async function checkTaxPackUpdatesOnStartup(): Promise<void> {
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
+// createWindow() can run more than once per app lifetime (renderer crash
+// recovery, macOS 'activate') but every window shares the same default
+// session (no partition/session is set in webPreferences) — registering
+// again on each call would stack duplicate 'select-usb-device' listeners
+// on that shared session, firing multiple confirmation dialogs per request.
+let usbDevicePermissionsRegistered = false;
 
 // Title-bar capability reported to the renderer via get-status; updated each
 // time the main window is created.
@@ -386,7 +393,12 @@ let gotSingleInstanceLock = false;
 // Prevent multiple instances of the app from running simultaneously.
 // This is especially important on Linux where the AppImage can be launched
 // multiple times without the OS preventing it.
-if (process.platform === 'linux') {
+if (process.env.FLO_E2E_USER_DATA_DIR) {
+  // Native Playwright supplies a disposable profile so Electron's single
+  // instance lock, caches, and session storage cannot collide with a user or
+  // another test run. Normal launches retain their platform-specific paths.
+  app.setPath('userData', path.resolve(process.env.FLO_E2E_USER_DATA_DIR));
+} else if (process.platform === 'linux') {
   // Explicitly set app name and userData path to prevent Electron from
   // resolving them inside temporary mount paths (e.g. /tmp/.mount_FloXXXXXX)
   app.name = 'flo-desktop';
@@ -497,6 +509,14 @@ function createWindow(): void {
       defaultPath: path.join(app.getPath('documents'), item.getFilename()),
     });
   });
+
+  // Required for the renderer's WebUSB printer flow (PrinterService.connect())
+  // to resolve at all — see usb-device-permissions.ts. Registered at most
+  // once per app lifetime; see usbDevicePermissionsRegistered above.
+  if (!usbDevicePermissionsRegistered) {
+    registerUsbDevicePermissions(mainWindow.webContents.session, `http://localhost:${getServerPort()}`);
+    usbDevicePermissionsRegistered = true;
+  }
 
   mainWindow.on('close', (event) => {
     if (!isQuitting) {
@@ -848,8 +868,12 @@ async function initialize(): Promise<void> {
     console.log('[Flo] Initializing WhatsApp service...');
     initWhatsAppFromDb();
 
-    console.log('[Flo] Starting mDNS advertisement...');
-    startMdns();
+    // Native E2E owns an offline fixture; optional LAN discovery must not
+    // contend with a developer session or keep the test process alive.
+    if (process.env.FLO_E2E_SKIP_OPTIONAL_NETWORK !== '1') {
+      console.log('[Flo] Starting mDNS advertisement...');
+      startMdns();
+    }
 
     console.log('[Flo] Initializing printer...');
     await initPrinter();
@@ -957,15 +981,19 @@ async function initialize(): Promise<void> {
     // (#58) — checkForUpdates() itself decides whether Linux's build format
     // (AppImage vs deb/rpm/snap) actually supports self-update.
     if (!isStoreBuild) {
-      setupAutoUpdater();
-      setTimeout(() => checkForUpdates(), 5000);
+      if (process.env.FLO_E2E_SKIP_OPTIONAL_NETWORK !== '1') {
+        setupAutoUpdater();
+        setTimeout(() => checkForUpdates(), 5000);
+      }
     } else {
       // Store builds skip electron-updater entirely; seed the persisted state
       // so the renderer shows honest "managed by the store" status from the
       // first load instead of a stale never-checked default (#467).
       setUpdateStatus(oneShotUpdateState('store-managed'));
     }
-    setTimeout(() => { void checkTaxPackUpdatesOnStartup(); }, 5000);
+    if (process.env.FLO_E2E_SKIP_OPTIONAL_NETWORK !== '1') {
+      setTimeout(() => { void checkTaxPackUpdatesOnStartup(); }, 5000);
+    }
 
     console.log('[Flo] Ready!');
   } catch (error) {
