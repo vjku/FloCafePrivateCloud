@@ -84,6 +84,9 @@ const OPTIONAL_SETTING_DEFAULTS: Record<string, string> = {
   currency_display: 'rial',
   number_digits: 'locale',
   calendar: 'locale',
+  // Telemetry endpoint. Empty string disables telemetry regardless of the
+  // telemetry_enabled flag (see db.isTelemetryEnabled).
+  telemetry_url: '',
 };
 
 function maskSetting(key: string, value: string): string {
@@ -867,6 +870,7 @@ const ALLOWED_WILDCARD_KEYS = new Set([
   'kds_default_view',
   'printer_method', 'paper_size', 'bill_template', 'bill_footer_message', 'printer_trim_decimals',
   'telemetry_enabled',
+  'telemetry_url',
   'diagnostics_consent',
   'kds_enabled', 'server_app_enabled', 'kot_printing_enabled',
   'split_checks_enabled',
@@ -996,6 +1000,14 @@ router.put('/:key', settingsWriteRateLimit, requireRole(...ROLE_ACCESS.ownerMana
         return res.status(400).json({ error: phoneRes.error || 'Invalid business phone number' });
       }
       valueToPersist = phoneRes.e164 || '';
+    }
+
+    // Telemetry endpoint: only an http(s) URL or empty (disabled) is accepted.
+    if (req.params.key === 'telemetry_url') {
+      if (typeof value !== 'string' || (value.trim() !== '' && !/^https?:\/\//i.test(value.trim()))) {
+        return res.status(400).json({ error: 'Telemetry URL must be empty or an http(s) URL' });
+      }
+      valueToPersist = value.trim();
     }
 
     // KDS turning off → invalidate any outstanding pairing tokens. Without

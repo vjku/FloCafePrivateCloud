@@ -31,6 +31,7 @@ async function main() {
     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
   `);
   set.run('telemetry_enabled', 'true', now());
+  set.run('telemetry_url', TELEMETRY_URL, now());
   set.run('country', 'AR', now());
   // settings.country is seeded to 'IN' at install, so telemetry only reports a
   // country a human confirmed. Without this stamp 'AR' is indistinguishable
@@ -110,6 +111,17 @@ async function main() {
     }) as typeof fetch;
     assert.equal(await sendEvent('app_launch'), false, 'disabled telemetry remains a no-op');
     assert.equal(calledWhileDisabled, false);
+
+    // Empty telemetry_url disables delivery even when the flag is on.
+    set.run('telemetry_url', '', now());
+    let calledWithEmptyUrl = false;
+    globalThis.fetch = (async () => {
+      calledWithEmptyUrl = true;
+      return new Response(null, { status: 204 });
+    }) as typeof fetch;
+    assert.equal(await sendEvent('app_launch'), false, 'empty telemetry_url disables delivery regardless of flag');
+    assert.equal(calledWithEmptyUrl, false);
+    set.run('telemetry_url', TELEMETRY_URL, now());
 
     set.run('telemetry_enabled', 'true', now());
     let calledWhileMatrixOffline = false;

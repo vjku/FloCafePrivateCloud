@@ -767,6 +767,7 @@ router.post('/setup/initialize', (req: Request, res: Response) => {
       terms_accepted,
       master_pin,
       cloud_server_url,
+      telemetry_url,
       email_product_updates,
       email_marketing,
     } = req.body;
@@ -835,6 +836,18 @@ router.post('/setup/initialize', (req: Request, res: Response) => {
       }
     }
 
+    // Optional telemetry endpoint. Empty (default) means telemetry stays off;
+    // a valid http(s) URL opts the store into anonymous usage telemetry.
+    let normalizedTelemetryUrl = '';
+    if (telemetry_url && String(telemetry_url).trim() !== '') {
+      const trimmedTelemetry = String(telemetry_url).trim();
+      if (!/^https?:\/\//i.test(trimmedTelemetry)) {
+        return res.status(400).json({ error: 'Telemetry URL must be a valid HTTP(S) URL' });
+      }
+      normalizedTelemetryUrl = trimmedTelemetry;
+    }
+    const telemetryEnabled = normalizedTelemetryUrl ? 'true' : 'false';
+
     let userId = '';
     const hashedPassword = bcrypt.hashSync(password, 10);
 
@@ -889,7 +902,8 @@ router.post('/setup/initialize', (req: Request, res: Response) => {
         // that reports the selection outright — counts.
         ...countryConfirmationPatch(country, getSettingValue('country'), req.body.country_selected),
         anonymous_data_consent: 'true',
-        telemetry_enabled: 'true',
+        telemetry_enabled: telemetryEnabled,
+        telemetry_url: normalizedTelemetryUrl,
         telemetry_scope: 'usage_stats,country,app_version,platform,session_duration,feature_usage,error_diagnostics',
         split_checks_enabled: 'false',
         // '1'/'0', not 'true'/'false' — mirrors FloAdmin's own `stores` table and

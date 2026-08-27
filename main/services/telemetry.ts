@@ -1,8 +1,9 @@
 /**
  * Anonymous usage telemetry — independent of cloud sync (sends whether or
  * not this store has cloud sync configured, since it's a separate concern).
- * Enabled by default for new installs. The owner can switch it off at any
- * time in Settings > Privacy. Tier 2 store diagnostics is a separate,
+ * Disabled by default for new installs: both the telemetry_enabled flag and
+ * the telemetry_url endpoint default to off/empty, and the owner can enable
+ * it in Settings > Privacy. Tier 2 store diagnostics is a separate,
  * explicit opt-in and is never bundled into this stream.
  *
  * anon_id is a random UUID persisted locally (see db.ensureTelemetryAnonId),
@@ -30,6 +31,16 @@ function matrixOffline(): boolean {
   return process.env.FLO_MATRIX_OFFLINE === '1';
 }
 
+/**
+ * Configurable telemetry endpoint. Empty/blank means telemetry is disabled
+ * (see isTelemetryEnabled in db.ts). The TELEMETRY_URL constant is kept only as
+ * a documented default reference; the runtime endpoint comes from settings.
+ */
+function getTelemetryUrl(): string {
+  const url = getSettingValue('telemetry_url');
+  return url && url.trim() ? url.trim() : '';
+}
+
 function trackTelemetry<T>(operation: Promise<T>): Promise<T> {
   inFlightTelemetry.add(operation);
   void operation.finally(() => inFlightTelemetry.delete(operation)).catch(() => {});
@@ -48,7 +59,7 @@ async function sendEventImpl(eventType: string, payload?: Record<string, unknown
     // once fired. Omitting it is what lets that fallback do its job.
     const provenance = readCountryProvenance();
     const country = provenance.country ?? undefined;
-    const response = await fetch(TELEMETRY_URL, {
+    const response = await fetch(getTelemetryUrl(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

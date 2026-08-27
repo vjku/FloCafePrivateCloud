@@ -689,6 +689,8 @@ export function ensureTelemetryAnonId(): string {
  * never bundled into this stream.
  */
 export function isTelemetryEnabled(): boolean {
+  const url = getSettingValue('telemetry_url');
+  if (!url || url.trim() === '') return false;
   return getSettingValue('telemetry_enabled') === 'true';
 }
 
@@ -4854,7 +4856,8 @@ function seedInstallDefaults(): void {
   insert('cloud_command_polling_enabled', '1');
   insert('cloud_registration_status', 'unregistered');
   insert('anonymous_data_consent', 'true');
-  insert('telemetry_enabled', 'true');
+  insert('telemetry_url', '');
+  insert('telemetry_enabled', 'false');
   insert('telemetry_scope', 'usage_stats,country,app_version,platform,session_duration,feature_usage,error_diagnostics');
   insert('diagnostics_consent', 'true');
   insert('kds_enabled', 'true');

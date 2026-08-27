@@ -1348,6 +1348,9 @@ export default function SettingsPage() {
   const [telemetryEnabled, setTelemetryEnabled] = useState(false);
   const [savingTelemetry, setSavingTelemetry] = useState(false);
 
+  const [telemetryUrl, setTelemetryUrl] = useState('');
+  const [savingTelemetryUrl, setSavingTelemetryUrl] = useState(false);
+
   const [diagnosticsConsent, setDiagnosticsConsent] = useState(false);
   const [savingDiagnosticsConsent, setSavingDiagnosticsConsent] = useState(false);
 
@@ -1582,6 +1585,12 @@ export default function SettingsPage() {
       // No row yet = consent never given (setup predates this feature, or
       // declined) = stays off until explicitly turned on here.
       setTelemetryEnabled(false);
+    });
+
+    api.get('/settings/telemetry_url').then((res) => {
+      setTelemetryUrl(res.data.setting?.value ?? '');
+    }).catch(() => {
+      setTelemetryUrl('');
     });
 
     api.get('/settings/diagnostics_consent').then((res) => {
@@ -1898,6 +1907,20 @@ export default function SettingsPage() {
       toast.error(t('saveFailed'));
     } finally {
       setSavingTelemetry(false);
+    }
+  };
+
+  const saveTelemetryUrl = async (url: string) => {
+    const previous = telemetryUrl;
+    setTelemetryUrl(url);
+    setSavingTelemetryUrl(true);
+    try {
+      await api.put('/settings/telemetry_url', { value: url });
+    } catch {
+      setTelemetryUrl(previous);
+      toast.error(t('saveFailed'));
+    } finally {
+      setSavingTelemetryUrl(false);
     }
   };
 
@@ -3561,14 +3584,31 @@ export default function SettingsPage() {
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={telemetryEnabled}
-                  disabled={savingTelemetry}
+                  checked={telemetryEnabled && telemetryUrl.trim() !== ''}
+                  disabled={savingTelemetry || telemetryUrl.trim() === ''}
                   onChange={(e) => saveTelemetry(e.target.checked)}
-                  className="rounded border-gray-300 text-brand focus:ring-brand"
+                  className="rounded border-gray-300 text-brand focus:ring-brand disabled:opacity-50 disabled:cursor-not-allowed"
                 />
                 <span className="text-sm text-gray-700">{t('anonymousTelemetry')}</span>
               </label>
               <p className="text-xs text-gray-500">{t('anonymousTelemetryHint')}</p>
+              {telemetryUrl.trim() === '' && (
+                <p className="text-xs font-medium text-amber-600">{t('telemetryEnableNeedsUrl')}</p>
+              )}
+
+              <div className="pt-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('telemetryUrl')}</label>
+                <input
+                  type="text"
+                  value={telemetryUrl}
+                  disabled={savingTelemetryUrl}
+                  onChange={(e) => setTelemetryUrl(e.target.value)}
+                  onBlur={() => saveTelemetryUrl(telemetryUrl)}
+                  placeholder={t('telemetryUrlPlaceholder')}
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:ring-brand focus:border-brand"
+                />
+                <p className="text-xs text-gray-500 mt-1">{t('telemetryUrlHint')}</p>
+              </div>
 
               <div className="border-t border-gray-100 pt-4">
                 <label className="flex items-center gap-3 cursor-pointer">

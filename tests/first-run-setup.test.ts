@@ -208,7 +208,8 @@ assert.equal(getCurrentSchemaVersion(), MIGRATIONS[MIGRATIONS.length - 1].versio
     assert.equal(setting('tables_required'), 'false');
     assert.equal(setting('onboarding_completed'), 'true');
     assert.equal(setting('anonymous_data_consent'), 'true', 'setup ignores a client-supplied consent field');
-    assert.equal(setting('telemetry_enabled'), 'true', 'telemetry is on by default after setup');
+    assert.equal(setting('telemetry_enabled'), 'false', 'telemetry is off by default after setup');
+    assert.equal(setting('telemetry_url'), '', 'telemetry_url defaults to empty after setup');
     assert.equal(setting('telemetry_scope'), 'usage_stats,country,app_version,platform,session_duration,feature_usage,error_diagnostics');
     assert.equal(setting('diagnostics_consent'), 'true', 'store diagnostics are on by default for a new install');
     assert.equal(profileRefreshes, 1, 'setup immediately refreshes the completed store profile in FloAdmin');
@@ -319,6 +320,59 @@ assert.equal(getCurrentSchemaVersion(), MIGRATIONS[MIGRATIONS.length - 1].versio
     console.log('   ✓ setup persists an explicit cloud_sync_enabled + custom cloud_server_url');
   } finally {
     await new Promise<void>((resolve) => cloudServer.close(() => resolve()));
+  }
+
+  // ── Telemetry endpoint opt-in during first-run setup ───────────────────────
+  closeDatabase();
+  fs.rmSync(testDir, { recursive: true, force: true });
+  testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'flo-first-run-telemetry-'));
+  initDatabase();
+
+  const telemetryApi = express();
+  telemetryApi.use(express.json());
+  telemetryApi.use('/api/auth', authRoutes);
+  let telemetryServer: http.Server;
+  try {
+    telemetryServer = await listen(telemetryApi);
+  } catch (error: any) {
+    if (error?.code === 'EPERM' || error?.code === 'EACCES') {
+      console.log('   ⚠ Skipping telemetry opt-in assertions: local port binding is blocked in this environment.');
+      return;
+    }
+    throw error;
+  }
+  const telemetryAddress = telemetryServer.address() as { port: number };
+  const telemetryBaseUrl = `http://127.0.0.1:${telemetryAddress.port}/api/auth`;
+
+  try {
+    const badTel = await request(telemetryBaseUrl, '/setup/initialize', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Tel Owner', email: 'tel-owner@example.com', password: 'TestPass123',
+        business_type: 'restaurant', setup_profile: 'empty', service_model: 'qsr',
+        terms_accepted: true,
+        telemetry_url: 'ftp://example.test/collect',
+      }),
+    });
+    assert.equal(badTel.status, 400, 'an invalid (non-http(s)) telemetry URL is rejected at setup');
+    assert.equal(count('users'), 0, 'no owner is created when the telemetry URL is invalid');
+    console.log('   ✓ setup rejects an invalid telemetry URL');
+
+    const optIn = await request(telemetryBaseUrl, '/setup/initialize', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Tel Owner', email: 'tel-owner@example.com', password: 'TestPass123',
+        business_type: 'restaurant', setup_profile: 'empty', service_model: 'qsr',
+        terms_accepted: true,
+        telemetry_url: 'https://telemetry.flopos.com/collect',
+      }),
+    });
+    assert.equal(optIn.status, 200, `setup succeeds with a telemetry URL (got ${optIn.status})`);
+    assert.equal(setting('telemetry_url'), 'https://telemetry.flopos.com/collect', 'the telemetry URL is persisted from setup');
+    assert.equal(setting('telemetry_enabled'), 'true', 'telemetry is enabled when a URL is supplied at setup');
+    console.log('   ✓ setup persists an explicit telemetry_url and enables telemetry');
+  } finally {
+    await new Promise<void>((resolve) => telemetryServer.close(() => resolve()));
   }
 }
 

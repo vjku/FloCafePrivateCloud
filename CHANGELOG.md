@@ -2,6 +2,17 @@
 
 All notable changes to Flo Cafe are documented here. Dates are release dates, not commit dates. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [3.3.0.1] - 2026-08-27
+
+### Added
+- Explicit opt-in for anonymous usage telemetry: a configurable endpoint URL (`telemetry_url`) and an enable toggle, both required before any data is sent.
+- Telemetry endpoint configuration in **Settings → Privacy**, with the enable toggle disabled (and a hint shown) until a URL is entered.
+- Telemetry endpoint URL can be supplied during first-run setup.
+
+### Changed
+- Anonymous telemetry is now **off by default** (`telemetry_enabled` defaults to `false`); an empty `telemetry_url` also disables it, so legacy installs that previously had telemetry forced on no longer send data until explicitly re-enabled.
+- Telemetry payloads are now sent to the operator-configured `telemetry_url` (previously hardcoded to the FloPOS endpoint); the `TELEMETRY_URL` constant remains only as a documented default.
+
 ## [3.3.0] - 2026-08-21
 
 ### Added

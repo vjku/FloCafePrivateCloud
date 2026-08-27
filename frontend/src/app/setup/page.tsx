@@ -113,6 +113,7 @@ export default function SetupPage() {
 
   const cloudEnabled = true;
   const [cloudServerUrl, setCloudServerUrl] = useState(DEFAULT_CLOUD_SERVER_URL);
+  const [telemetryUrl, setTelemetryUrl] = useState('');
 
   const isPasswordValid = (password: string) => {
     if (!password || password.length < 8) return false;
@@ -248,6 +249,7 @@ export default function SetupPage() {
         master_pin: masterPinAvailable ? masterPin : undefined,
         cloud_sync_enabled: true,
         cloud_server_url: cloudServerUrl.trim() || DEFAULT_CLOUD_SERVER_URL,
+        telemetry_url: telemetryUrl.trim(),
         email_product_updates: productUpdates,
         email_marketing: marketing,
         ...countryPayload,
@@ -623,6 +625,17 @@ export default function SetupPage() {
                       <summary className="cursor-pointer text-primary">{t('anonymousDataDetails')}</summary>
                       <p className="mt-1">{t('anonymousDataFields')}</p>
                     </details>
+                    <div className="mt-3">
+                      <label className="block text-sm font-medium text-foreground mb-1">{t('telemetryUrl')}</label>
+                      <input
+                        type="text"
+                        value={telemetryUrl}
+                        onChange={(e) => setTelemetryUrl(e.target.value)}
+                        placeholder={t('telemetryUrlPlaceholder')}
+                        className="w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary"
+                      />
+                      <p className="mt-1 text-xs">{t('telemetryUrlHint')}</p>
+                    </div>
                   </div>
 
                   <div className="space-y-3 rounded-lg border border-border px-3 py-3 text-sm">

@@ -358,6 +358,7 @@ describe('Issue #263: Phone Normalization, Validation, and Privacy', () => {
 
     const db = getDatabase();
     db.prepare("INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('telemetry_enabled', 'true', datetime('now'))").run();
+    db.prepare("INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('telemetry_url', ?, datetime('now'))").run(TELEMETRY_URL);
     db.prepare("INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('country', 'IN', datetime('now'))").run();
     db.prepare("INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('business_phone', '+919876543210', datetime('now'))").run();
     db.prepare("INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('phone', '+919876543210', datetime('now'))").run();
