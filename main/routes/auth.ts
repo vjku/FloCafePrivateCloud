@@ -767,6 +767,7 @@ router.post('/setup/initialize', (req: Request, res: Response) => {
       terms_accepted,
       master_pin,
       cloud_server_url,
+      cloud_sync_enabled,
       telemetry_url,
       email_product_updates,
       email_marketing,
@@ -824,16 +825,21 @@ router.post('/setup/initialize', (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid service model' });
     }
 
-    // Cloud v2 registers the POS automatically on first boot. There is no
-    // pending/claim step, so new installs start with cloud coordination on.
-    const cloudSyncEnabled = true;
+    // Cloud sync is opt-in: the operator must explicitly enable it AND provide a
+    // non-empty cloud server URL. With no URL configured, nothing is transmitted.
+    const cloudSyncEnabled = cloud_sync_enabled === true;
     let normalizedCloudServerUrl: string | undefined;
     if (cloudSyncEnabled) {
+      if (!cloud_server_url || !String(cloud_server_url).trim()) {
+        return res.status(400).json({ error: 'Cloud server URL is required to enable cloud sync' });
+      }
       try {
-        normalizedCloudServerUrl = normalizeCloudServerUrl(cloud_server_url || DEFAULT_CLOUD_SERVER_URL);
+        normalizedCloudServerUrl = normalizeCloudServerUrl(cloud_server_url);
       } catch {
         return res.status(400).json({ error: 'Cloud server URL must be a valid HTTPS URL' });
       }
+    } else {
+      normalizedCloudServerUrl = '';
     }
 
     // Optional telemetry endpoint. Empty (default) means telemetry stays off;
@@ -909,7 +915,7 @@ router.post('/setup/initialize', (req: Request, res: Response) => {
         // '1'/'0', not 'true'/'false' — mirrors FloAdmin's own `stores` table and
         // matches how cloud-sync.ts reads this key everywhere else.
         cloud_sync_enabled: cloudSyncEnabled ? '1' : '0',
-        cloud_server_url: normalizedCloudServerUrl || DEFAULT_CLOUD_SERVER_URL,
+        cloud_server_url: normalizedCloudServerUrl || '',
         email_product_updates: email_product_updates === true ? 'true' : 'false',
         email_marketing: email_marketing === true ? 'true' : 'false',
         cloud_services_disabled_by_user: 'false',

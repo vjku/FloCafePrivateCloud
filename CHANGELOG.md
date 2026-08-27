@@ -2,6 +2,18 @@
 
 All notable changes to Flo Cafe are documented here. Dates are release dates, not commit dates. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [3.3.0.2] - 2026-08-28
+
+### Added
+- **Settings → Privacy:** Added an explicit Cloud Sync opt-in section with a toggle and support for self-hosted/private cloud server URLs, along with clear, safety-focused helper text.
+- **First-run setup:** Added a Cloud Sync opt-in step with server URL validation.
+- **i18n:** Added Cloud Sync setup and Settings strings for English, Spanish, Persian, and Portuguese under `settings.*` and `setup.*`.
+
+### Changed
+- Cloud Sync is now **explicitly opt-in**. Fresh installations seed `cloud_sync_enabled=0` with an empty `cloud_server_url`, ensuring no data leaves the installation unless the operator explicitly configures a non-empty server URL and enables sync.
+- Existing opted-in installations are preserved: their configured URL and enabled state are retained, with defaults populated only when the corresponding values are missing.
+- Migration v40 updates the legacy default only for installations that already have a cloud server URL configured.
+
 ## [3.3.0.1] - 2026-08-27
 
 ### Added

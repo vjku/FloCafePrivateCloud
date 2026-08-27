@@ -52,7 +52,8 @@ const SELECTABLE_LANGUAGES: Language[] = (Object.keys(LANGUAGES) as Language[]).
 
 // Mirrors main/services/cloud-sync.ts DEFAULT_CLOUD_SERVER_URL — kept in sync
 // manually since the frontend can't import backend TS modules directly.
-const DEFAULT_CLOUD_SERVER_URL = 'https://blue.flopos.com/';
+// Cloud sync is opt-in and only transmits to a server URL the operator
+// explicitly enters during setup or in Settings → Privacy.
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const SUSPECT_EMAIL_TLDS = new Set(['example', 'invalid', 'lcaol', 'local', 'localhost', 'test']);
 
@@ -111,8 +112,8 @@ export default function SetupPage() {
   const [masterPinConfirm, setMasterPinConfirm] = useState('');
   const masterPinValid = /^\d{4}$/.test(masterPin) && masterPin === masterPinConfirm;
 
-  const cloudEnabled = true;
-  const [cloudServerUrl, setCloudServerUrl] = useState(DEFAULT_CLOUD_SERVER_URL);
+  const [cloudEnabled, setCloudEnabled] = useState(false);
+  const [cloudServerUrl, setCloudServerUrl] = useState('');
   const [telemetryUrl, setTelemetryUrl] = useState('');
 
   const isPasswordValid = (password: string) => {
@@ -209,6 +210,11 @@ export default function SetupPage() {
       return;
     }
 
+    if (cloudEnabled && !cloudServerUrl.trim()) {
+      toast.error(t('cloudEnableNeedsUrl'));
+      setStep(5);
+      return;
+    }
     if (cloudEnabled && cloudServerUrl.trim()) {
       try {
         const parsed = new URL(cloudServerUrl.trim());
@@ -247,8 +253,8 @@ export default function SetupPage() {
         service_model: serviceModel,
         terms_accepted: termsAccepted,
         master_pin: masterPinAvailable ? masterPin : undefined,
-        cloud_sync_enabled: true,
-        cloud_server_url: cloudServerUrl.trim() || DEFAULT_CLOUD_SERVER_URL,
+        cloud_sync_enabled: cloudEnabled,
+        cloud_server_url: cloudServerUrl.trim(),
         telemetry_url: telemetryUrl.trim(),
         email_product_updates: productUpdates,
         email_marketing: marketing,
@@ -735,12 +741,12 @@ export default function SetupPage() {
                   <input
                     type="checkbox"
                     checked={cloudEnabled}
-                    disabled
+                    onChange={(e) => setCloudEnabled(e.target.checked)}
                     className="mt-0.5 h-4 w-4 rounded border-gray-300"
                   />
                   <span>
-                    <span className="font-medium text-foreground">{t('cloudManagedAutomaticallyTitle')}</span>
-                    <span className="block text-sm text-muted-foreground mt-1">{t('cloudManagedAutomaticallyDescription')}</span>
+                    <span className="font-medium text-foreground">{t('cloudOptInTitle')}</span>
+                    <span className="block text-sm text-muted-foreground mt-1">{t('cloudOptInHint')}</span>
                   </span>
                 </label>
 
@@ -752,10 +758,10 @@ export default function SetupPage() {
                       type="url"
                       value={cloudServerUrl}
                       onChange={(e) => setCloudServerUrl(e.target.value)}
-                      placeholder={DEFAULT_CLOUD_SERVER_URL}
+                      placeholder={t('cloudServerUrlPlaceholder')}
                       dir="ltr"
                     />
-                    <p className="text-xs text-muted-foreground">{t('cloudUrlHint')}</p>
+                    <p className="text-xs text-muted-foreground">{t('cloudServerUrlHint')}</p>
                   </div>
                 )}
 

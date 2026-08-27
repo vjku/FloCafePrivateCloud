@@ -13,7 +13,7 @@ import { WebSocket, type RawData } from 'ws';
 import { readCountryProvenance } from './country-provenance';
 import { getDatabase, now, parseItemJson, attachEffectiveAddons, ensureCloudIdentity, isDiagnosticsConsentEnabled, isDatabaseMaintenanceActive, registerDatabaseMaintenanceEndListener, registerDatabaseMaintenanceStartListener, utcDayBounds, utcTodayDate, withDatabaseRequest } from '../db';
 
-export const DEFAULT_CLOUD_SERVER_URL = 'https://blue.flopos.com/';
+export const DEFAULT_CLOUD_SERVER_URL = '';
 
 const HEARTBEAT_INTERVAL_MS = 5 * 60_000;
 const OUTBOX_INTERVAL_MS = 15_000;
@@ -147,7 +147,12 @@ function isLocalDevUrl(url: URL): boolean {
 }
 
 export function normalizeCloudServerUrl(raw?: string | null): string {
-  const url = new URL(raw && raw.trim() ? raw.trim() : DEFAULT_CLOUD_SERVER_URL);
+  const trimmed = raw && raw.trim() ? raw.trim() : '';
+  // An empty URL means "no cloud server configured" — not an error. Callers
+  // must require a non-empty URL before enabling sync; this keeps the app
+  // fully offline-capable with no thrown errors.
+  if (!trimmed) return '';
+  const url = new URL(trimmed);
   if (url.protocol !== 'https:' && !(url.protocol === 'http:' && isLocalDevUrl(url))) {
     throw new Error('Cloud server URL must use HTTPS');
   }
@@ -316,7 +321,7 @@ export class CloudSyncService {
     this.settings = cfg;
     if (!cfg) return;
 
-    if (cfg.sync_enabled && cfg.api_key) {
+    if (cfg.sync_enabled && cfg.api_key && cfg.server_url?.trim()) {
       this.runBackground(this.flushOutbox(), 'outbox flush');
       this.outboxTimer = setInterval(() => this.runBackground(this.flushOutbox(), 'outbox flush'), OUTBOX_INTERVAL_MS);
       this.runBackground(this.flushSupportTicketOutbox(), 'support outbox flush');
@@ -431,7 +436,7 @@ export class CloudSyncService {
     if (!this.cloudDeletionInProgress && !deletionBlocked) ensureCloudIdentity();
     const refreshed = this.readSettings(db);
     return {
-      cloud_server_url: refreshed.cloud_server_url || DEFAULT_CLOUD_SERVER_URL,
+      cloud_server_url: refreshed.cloud_server_url || '',
       cloud_pos_hash: refreshed.cloud_pos_hash || null,
       cloud_pos_id: refreshed.cloud_pos_id || null,
       cloud_sync_enabled: refreshed.cloud_sync_enabled === '1',
@@ -474,7 +479,10 @@ export class CloudSyncService {
       throw new Error('Cloud deletion is pending; cancel it before registering again');
     }
     const { posHash, deviceSecret } = ensureCloudIdentity();
-    const serverUrl = normalizeCloudServerUrl(settings.cloud_server_url || DEFAULT_CLOUD_SERVER_URL);
+    if (!settings.cloud_server_url?.trim()) {
+      throw new Error('Cloud server URL is required to register');
+    }
+    const serverUrl = normalizeCloudServerUrl(settings.cloud_server_url);
     const owner = db.prepare(
       "SELECT name FROM users WHERE role = 'owner' AND is_active = 1 ORDER BY created_at ASC LIMIT 1"
     ).get() as { name?: string } | undefined;
@@ -748,7 +756,8 @@ export class CloudSyncService {
         status: settings.cloud_deletion_status || 'pending',
       };
     }
-    const serverUrl = normalizeCloudServerUrl(settings.cloud_server_url || DEFAULT_CLOUD_SERVER_URL);
+    if (!settings.cloud_server_url?.trim()) return null;
+    const serverUrl = normalizeCloudServerUrl(settings.cloud_server_url);
     const url = endpoint(serverUrl, `/api/cloud-data/deletion-request/status?id=${encodeURIComponent(requestId)}&token=${encodeURIComponent(statusToken)}`);
     const res = await this.trackedFetch(url, { signal: requestSignal(options.signal) });
     const data = await res.json().catch(() => ({})) as Record<string, unknown>;
@@ -1332,6 +1341,9 @@ export class CloudSyncService {
     // that point creates a permanent-looking blank row in FloAdmin. Setup always
     // writes a non-empty business name (falling back to "Store"), so wait for it.
     if (!settings.business_name?.trim()) return;
+    // No cloud server URL configured (opt-in) — never transmit. The URL is the
+    // operator's explicit consent to sync; without it the app stays offline.
+    if (!settings.cloud_server_url?.trim()) return;
     this.attemptAutoRegister();
   }
 
@@ -1354,6 +1366,7 @@ export class CloudSyncService {
     }
     if (this.cloudDeletionInProgress || isCloudDeletionBlocking(settings.cloud_deletion_status)
       || settings.cloud_sync_enabled !== '1' || settings.cloud_services_disabled_by_user === 'true') return;
+    if (!settings.cloud_server_url?.trim()) return;
     if (this.autoRegisterTimer || this.autoRegisterInFlight) return;
     this.autoRegisterInFlight = true;
     this.runBackground(this.register()
@@ -1381,7 +1394,7 @@ export class CloudSyncService {
   private maybeStartRelay() {
     if (this.cloudDeletionInProgress || this.shutdownRequested) return;
     const cfg = this.settings;
-    if (!cfg?.api_key || !(cfg.sync_enabled || cfg.command_polling_enabled)) {
+    if (!cfg?.api_key || !(cfg.sync_enabled || cfg.command_polling_enabled) || !cfg.server_url?.trim()) {
       this.teardownRelay();
       this.stopHttpFallback();
       return;

@@ -1309,6 +1309,9 @@ export default function SettingsPage() {
   const [savingCloud, setSavingCloud] = useState(false);
   const [registeringCloud, setRegisteringCloud] = useState(false);
   const [showInitializeCloudConfirm, setShowInitializeCloudConfirm] = useState(false);
+  const [cloudServerUrl, setCloudServerUrl] = useState('');
+  const [savingCloudSync, setSavingCloudSync] = useState(false);
+  const [savingCloudServerUrl, setSavingCloudServerUrl] = useState(false);
 
   const cloudServicesStopped = cloudStatus.cloud_services_disabled_by_user;
   const cloudDeletionFinal = cloudStatus.cloud_registration_status === 'deleted' || ['approved', 'completed', 'deleted'].includes(cloudStatus.cloud_deletion_status);
@@ -1338,6 +1341,7 @@ export default function SettingsPage() {
         cloud_orders_enabled: !!data.cloud_orders_enabled,
         cloud_last_sync: data.cloud_last_sync || null,
       }));
+      setCloudServerUrl(data.cloud_server_url || '');
     } catch {
       // Keep the last known status if the local settings request fails.
     }
@@ -1762,6 +1766,7 @@ export default function SettingsPage() {
       };
       setCloudSettings(settings);
       setSavedCloudSettings(settings);
+      setCloudServerUrl(res.data.cloud_server_url || '');
       setCloudStatus({
         cloud_registration_status: res.data.cloud_registration_status || 'unregistered',
         cloud_services_disabled_by_user: !!res.data.cloud_services_disabled_by_user,
@@ -1867,6 +1872,10 @@ export default function SettingsPage() {
       notifyCloudAccountStatusChanged();
       if (!silent) toast.success(t('cloudSaved'));
     } catch (err) {
+      // The toggle is optimistic; revert to the last persisted value so the UI
+      // never shows cloud sync enabled when the server rejected the change
+      // (e.g. enabling without a cloud server URL under the opt-in gate).
+      setCloudSettings((prev) => ({ ...prev, cloud_sync_enabled: savedCloudSettings.cloud_sync_enabled }));
       if (!silent) toast.error(t('cloudSaveFailed'));
       throw err;
     } finally {
@@ -1947,6 +1956,50 @@ export default function SettingsPage() {
       toast.error(t('saveFailed'));
     } finally {
       setSavingDiagnosticsConsent(false);
+    }
+  };
+
+  const saveCloudSync = async (enabled: boolean) => {
+    const previous = cloudSettings.cloud_sync_enabled;
+    setCloudSettings((prev) => ({ ...prev, cloud_sync_enabled: enabled }));
+    setSavingCloudSync(true);
+    try {
+      const res = await api.put('/settings/cloud', {
+        cloud_sync_enabled: enabled,
+        cloud_server_url: cloudServerUrl.trim(),
+      });
+      setCloudSettings((prev) => ({ ...prev, ...res.data }));
+      setSavedCloudSettings((prev) => ({ ...prev, ...res.data }));
+      if (enabled) toast.success(t('cloudSyncEnabled'));
+    } catch {
+      setCloudSettings((prev) => ({ ...prev, cloud_sync_enabled: previous }));
+      toast.error(t('saveFailed'));
+    } finally {
+      setSavingCloudSync(false);
+    }
+  };
+
+  const saveCloudServerUrl = async (url: string) => {
+    const normalized = url.trim();
+    const previous = cloudServerUrl;
+    setCloudServerUrl(normalized);
+    setSavingCloudServerUrl(true);
+    try {
+      // Clearing the URL also disables cloud sync: you cannot sync to no server,
+      // so keep the stored flag consistent with the opt-in egress gate.
+      const res = await api.put('/settings/cloud', {
+        cloud_server_url: normalized,
+        cloud_sync_enabled: normalized ? cloudSettings.cloud_sync_enabled : false,
+      });
+      setCloudServerUrl(res.data.cloud_server_url || '');
+      setCloudSettings((prev) => ({ ...prev, ...res.data }));
+      setSavedCloudSettings((prev) => ({ ...prev, ...res.data }));
+      toast.success(t('saved'));
+    } catch {
+      setCloudServerUrl(previous);
+      toast.error(t('saveFailed'));
+    } finally {
+      setSavingCloudServerUrl(false);
     }
   };
 
@@ -3622,6 +3675,38 @@ export default function SettingsPage() {
                 <p className="text-xs text-gray-500 mt-1">{t('telemetryUrlHint')}</p>
               </div>
 
+              <div className="pt-2">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={cloudSettings.cloud_sync_enabled && cloudServerUrl.trim() !== ''}
+                    disabled={savingCloudSync || cloudServerUrl.trim() === ''}
+                    onChange={(e) => saveCloudSync(e.target.checked)}
+                    className="rounded border-gray-300 text-brand focus:ring-brand disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                  <span className="text-sm text-gray-700">{t('cloudOptInTitle')}</span>
+                </label>
+                <p className="text-xs text-gray-500 mt-1">{t('cloudOptInHint')}</p>
+                {cloudServerUrl.trim() === '' && (
+                  <p className="text-xs font-medium text-amber-600">{t('cloudEnableNeedsUrl')}</p>
+                )}
+
+                <div className="pt-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('cloudServerUrl')}</label>
+                  <input
+                    type="text"
+                    value={cloudServerUrl}
+                    disabled={savingCloudServerUrl}
+                    onChange={(e) => setCloudServerUrl(e.target.value)}
+                    onBlur={() => saveCloudServerUrl(cloudServerUrl)}
+                    placeholder={t('cloudServerUrlPlaceholder')}
+                    className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:ring-brand focus:border-brand"
+                    dir="ltr"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">{t('cloudServerUrlHint')}</p>
+                </div>
+              </div>
+
               <div className="border-t border-gray-100 pt-4">
                 <label className="flex items-center gap-3 cursor-pointer">
                   <input
@@ -4698,8 +4783,9 @@ export default function SettingsPage() {
                   <input
                     type="checkbox"
                     checked={cloudSettings.cloud_sync_enabled}
+                    disabled={cloudServerUrl.trim() === ''}
                     onChange={(e) => setCloudSettings({ ...cloudSettings, cloud_sync_enabled: e.target.checked })}
-                    className="mt-0.5 rounded border-gray-300 text-brand focus:ring-brand"
+                    className="mt-0.5 rounded border-gray-300 text-brand focus:ring-brand disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                   <div>
                     <span className="text-sm font-medium text-gray-900 block">{cloudServicesStopped ? t('cloudEnableButton') : t('enableBillSync')}</span>

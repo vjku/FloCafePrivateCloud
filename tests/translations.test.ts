@@ -380,6 +380,9 @@ const FA_INTENTIONAL_IDENTICAL: ReadonlySet<string> = new Set([
   'printTest.paperWidth80', // measurement
   'products.addonSelectionRange', // pure format: {min} – {max}
   'setup.ownerEmailPlaceholder', // example email
+  'setup.cloudUrlHint', // technical cloud-server URL hint
+  'setup.cloudServerUrlPlaceholder', // example URL
+  'settings.cloudServerUrlPlaceholder', // example URL
   'settings.apiKeyInputPlaceholder', // example API key
   'settings.connectionUsb', // technical acronym
   'settings.instagramPlaceholder', // example handle

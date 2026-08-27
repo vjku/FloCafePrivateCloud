@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import expressRateLimit from 'express-rate-limit';
-import { getDatabase, now } from '../db';
+import { getDatabase, now, getSettingValue } from '../db';
 import { cloudSync, DEFAULT_CLOUD_SERVER_URL, normalizeCloudServerUrl } from '../services/cloud-sync';
 import { googleDrive } from '../services/google-drive';
 import { requireRole } from '../middleware/security';
@@ -624,14 +624,23 @@ router.put('/cloud', requireRole(...ROLE_ACCESS.ownerManager), (req: Request, re
       cloud_command_polling_enabled: bool01Flag(cloud_command_polling_enabled),
     };
 
+    let normalizedServerUrl: string | undefined;
     if (cloud_server_url !== undefined) {
-      updates.cloud_server_url = normalizeCloudServerUrl(cloud_server_url || DEFAULT_CLOUD_SERVER_URL);
+      const trimmed = String(cloud_server_url).trim();
+      normalizedServerUrl = trimmed ? normalizeCloudServerUrl(trimmed) : '';
+    }
+    if (normalizedServerUrl !== undefined) {
+      updates.cloud_server_url = normalizedServerUrl;
     }
     if (cloud_api_key !== undefined && !isMaskedSecret(cloud_api_key)) {
       updates.cloud_api_key = String(cloud_api_key || '');
     }
     const enablingCloud = [cloud_sync_enabled, cloud_orders_enabled, cloud_reports_enabled, cloud_command_polling_enabled]
       .some((value) => bool01Flag(value) === '1');
+    const effectiveServerUrl = normalizedServerUrl !== undefined ? normalizedServerUrl : getSettingValue('cloud_server_url');
+    if (enablingCloud && !effectiveServerUrl) {
+      return res.status(400).json({ error: 'Cloud server URL is required to enable cloud sync' });
+    }
     const resumingStoppedCloud = cloudSync.getStatus().cloud_services_disabled_by_user && enablingCloud;
     if (resumingStoppedCloud) {
       // Stop All disables every cloud feature. Re-enabling the Cloud Services
@@ -669,9 +678,15 @@ router.post('/cloud/register', requireRole(...ROLE_ACCESS.ownerManager), asyncHa
       return res.status(409).json({ error: CLOUD_ACCOUNT_UNAVAILABLE_ERROR });
     }
     if (req.body?.cloud_server_url !== undefined) {
+      const trimmed = String(req.body.cloud_server_url).trim();
+      if (!trimmed) {
+        return res.status(400).json({ error: 'Cloud server URL is required to register' });
+      }
       upsertSettings(getDatabase(), {
-        cloud_server_url: normalizeCloudServerUrl(req.body.cloud_server_url || DEFAULT_CLOUD_SERVER_URL),
+        cloud_server_url: normalizeCloudServerUrl(trimmed),
       });
+    } else if (!getSettingValue('cloud_server_url')) {
+      return res.status(400).json({ error: 'Cloud server URL is required to register' });
     }
     if (cloudSync.getStatus().cloud_deletion_blocked) {
       return res.status(409).json({ error: 'Cloud deletion is unresolved; retry or cancel it before re-enabling cloud services.' });

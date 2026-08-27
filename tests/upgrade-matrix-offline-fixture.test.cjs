@@ -13,7 +13,7 @@ try {
   const file = path.join(bundle, 'index.js');
   fs.writeFileSync(file, [
     "const telemetry = 'https://telemetry.flopos.com/collect';",
-    "const cloud = 'https://blue.flopos.com';",
+    "const cloud = 'https://cloud.example.com';",
   ].join('\n'));
 
   const result = spawnSync(process.execPath, [

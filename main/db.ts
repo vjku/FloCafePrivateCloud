@@ -308,7 +308,7 @@ export function withDatabaseMaintenanceLock<T>(operation: (signal: AbortSignal) 
   });
 }
 
-const DEFAULT_CLOUD_SERVER_URL = 'https://blue.flopos.com/';
+const DEFAULT_CLOUD_SERVER_URL = '';
 
 function randomSecret(): string {
   return crypto.randomBytes(32).toString('base64')
@@ -3088,6 +3088,8 @@ export const MIGRATIONS: { version: number; name: string; up: () => void }[] = [
          WHERE key = 'cloud_sync_enabled'
            AND value = '0'
            AND updated_at NOT LIKE '%T%'
+           AND (SELECT value FROM settings WHERE key = 'cloud_server_url') IS NOT NULL
+           AND (SELECT value FROM settings WHERE key = 'cloud_server_url') <> ''
       `).run(now());
       db.prepare(`DELETE FROM settings WHERE key = 'cloud_pending_store_id'`).run();
       insertSettingIfMissing('taxes_enabled', 'false');
@@ -4853,7 +4855,7 @@ function seedInstallDefaults(): void {
   insert('setup_profile', '');
   insert('cloud_server_url', DEFAULT_CLOUD_SERVER_URL);
   insert('cloud_connected', 'false');
-  insert('cloud_sync_enabled', '1');
+  insert('cloud_sync_enabled', '0');
   insert('cloud_orders_enabled', '0');
   insert('cloud_reports_enabled', '1');
   insert('cloud_command_polling_enabled', '1');

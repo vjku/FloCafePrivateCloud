@@ -5,8 +5,8 @@ const path = require('node:path');
 
 const replacements = [
   ['https://telemetry.flopos.com/collect', 'http://127.0.0.1:9/collect', 'telemetry'],
-  ['https://blue.flopos.com/', 'http://127.0.0.1:9/', 'cloud'],
-  ['https://blue.flopos.com', 'http://127.0.0.1:9', 'cloud'],
+  ['https://cloud.example.com/', 'http://127.0.0.1:9/', 'cloud'],
+  ['https://cloud.example.com', 'http://127.0.0.1:9', 'cloud'],
 ];
 
 function listFiles(root) {

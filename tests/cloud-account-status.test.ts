@@ -71,6 +71,7 @@ async function run() {
     console.log('='.repeat(50));
 
     setSettings({
+      cloud_server_url: 'https://cloud.example.com',
       cloud_api_key: 'stale-api-key',
       cloud_registration_status: 'unregistered',
       cloud_services_disabled_by_user: 'false',
@@ -222,6 +223,7 @@ async function run() {
     }) as typeof fetch;
     upstreamCalls = 0;
     setSettings({
+      cloud_server_url: 'https://cloud.example.com',
       cloud_api_key: 'registered-api-key',
       cloud_pos_hash: 'registered-pos-hash',
       cloud_registration_status: 'registered',
@@ -254,7 +256,7 @@ async function run() {
 
     const service = cloudSync as any;
     service.settings = {
-      server_url: 'https://blue.flopos.com/',
+      server_url: 'https://cloud.example.com/',
       api_key: 'registered-api-key',
       pos_hash: 'registered-pos-hash',
       command_polling_enabled: false,
@@ -317,7 +319,7 @@ async function run() {
       cloud_sync_enabled: '0',
     });
     service.settings = {
-      server_url: 'https://blue.flopos.com/',
+      server_url: 'https://cloud.example.com/',
       api_key: 'registered-api-key',
       pos_hash: 'registered-pos-hash',
       command_polling_enabled: true,
