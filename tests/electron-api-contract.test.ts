@@ -54,7 +54,7 @@ async function run(): Promise<void> {
   );
   assert.deepEqual(Object.keys(exposedApi!).sort(), [
     'backupDatabase', 'checkForUpdates', 'dbApplySafeFixes', 'dbHealthCheck',
-    'dbInitialize', 'getAppInfo', 'getBetaChannel', 'getDailySummary', 'getKdsInfo',
+    'dbInitialize', 'downloadUpdate', 'getAppInfo', 'getBetaChannel', 'getDailySummary', 'getKdsInfo',
     'getMasterPinStatus', 'getPrinters', 'getSettings', 'getStatus', 'getUpdateStatus',
     'onMenuAction', 'onUpdateStatus', 'openKdsWindow', 'platform', 'restartAndInstall',
     'restoreBackup', 'savePrinter', 'setBetaChannel', 'setSetting', 'windowAction', 'windowReady',

@@ -127,6 +127,7 @@ export async function injectElectronFixture(
       getBetaChannel: async () => false,
       setBetaChannel: async () => result,
       checkForUpdates: async () => undefined,
+      downloadUpdate: async () => result,
       restartAndInstall: async () => result,
     };
 
