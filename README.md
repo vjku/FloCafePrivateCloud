@@ -1,18 +1,18 @@
 <div align="center">
-  <h1>FloCafe</h1>
+  <h1>FloCafePrivateCloud</h1>
   <p><strong>Free, open-source, offline-first point of sale for cafés, restaurants, and small kitchens.</strong></p>
   <p>
     <a href="https://flopos.com">Website</a> ·
-    <a href="https://github.com/FreeOpenSourcePOS/FloCafe/releases">Download</a> ·
-    <a href="https://github.com/FreeOpenSourcePOS/FloCafe/issues">Report a bug</a> ·
-    <a href="https://www.reddit.com/r/FloPOS/">Community</a>
+    <a href="https://github.com/vjku/FloCafePrivateCloud/releases">Download</a> ·
+    <a href="https://github.com/vjku/FloCafePrivateCloud/issues">Report a bug</a> ·
+    <a href="https://www.reddit.com/r/FloPOS/">Community (banned)</a>
   </p>
   <p>
-    <a href="https://github.com/FreeOpenSourcePOS/FloCafe/releases"><img src="https://img.shields.io/github/v/release/FreeOpenSourcePOS/FloCafe?label=latest%20release" alt="Latest release"></a>
-    <a href="https://github.com/FreeOpenSourcePOS/FloCafe/releases"><img src="https://img.shields.io/github/downloads/FreeOpenSourcePOS/FloCafe/total?label=release%20downloads" alt="Total release downloads"></a>
-    <a href="https://github.com/FreeOpenSourcePOS/FloCafe/blob/main/LICENSE"><img src="https://img.shields.io/github/license/FreeOpenSourcePOS/FloCafe" alt="MIT License"></a>
+    <a href="https://github.com/vjku/FloCafePrivateCloud/releases"><img src="https://img.shields.io/github/v/release/vjku/FloCafePrivateCloud?label=latest%20release" alt="Latest release"></a>
+    <a href="https://github.com/vjku/FloCafePrivateCloud/releases"><img src="https://img.shields.io/github/downloads/vjku/FloCafePrivateCloud/total?label=release%20downloads" alt="Total release downloads"></a>
+    <a href="https://github.com/vjku/FloCafePrivateCloud/blob/main/LICENSE"><img src="https://img.shields.io/github/license/vjku/FloCafePrivateCloud" alt="MIT License"></a>
     <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue" alt="Windows, macOS, and Linux">
-    <a href="https://github.com/FreeOpenSourcePOS/FloCafe/actions/workflows/ci.yml"><img src="https://github.com/FreeOpenSourcePOS/FloCafe/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
+    <a href="https://github.com/vjku/FloCafePrivateCloud/actions/workflows/ci.yml"><img src="https://github.com/vjku/FloCafePrivateCloud/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
   </p>
 </div>
 
@@ -20,23 +20,14 @@
   <img src="docs/images/flo-cafe-pos.webp" alt="FloCafe POS screen showing product selection and an active dine-in order" width="100%">
 </p>
 
+> **Fork notice — FloCafePrivateCloud.** This repository is a hard fork of [FloCafe](https://github.com/FreeOpenSourcePOS/FloCafe) (FreeOpenSourcePOS/FloCafe), maintained as a self-hosted, private-cloud POS deployment.
+> Objectives: (1) keep all network egress strictly opt-in; (2) ship application updates only from this fork's own release channel; (3) retain full offline-first operation with local data ownership; (4) add private-cloud integrations only behind explicit, owner-level consent; (5) track upstream for security and tax-pack fixes. Changes are intended to flow back to upstream via pull requests after a settling period.
+
 FloCafe runs directly on the business's own computer. Orders, customers, receipts, and backups are stored in a local SQLite database, allowing counter service and kitchen displays to continue operating without an internet connection. No hosted or cloud account is required for core POS operation. Optional integrations—such as Google Drive backup, WhatsApp bill delivery, and cloud-connected reporting—can be enabled when needed.
 
-## Get FloCafe
+## Get FloCafePrivateCloud
 
-Download the latest installer from [GitHub Releases](https://github.com/FreeOpenSourcePOS/FloCafe/releases), or install through your platform's app store:
-
-<p>
-  <a href="https://apps.apple.com/in/app/flo-cafe/id6763136018">
-    <img src="https://img.shields.io/badge/Mac_App_Store-Download-black?logo=apple&style=for-the-badge" alt="Download on the Mac App Store">
-  </a>
-  <a href="https://apps.microsoft.com/detail/9n1md6585p4q">
-    <img src="https://img.shields.io/badge/Microsoft_Store-Download-0078D4?logo=microsoft&style=for-the-badge" alt="Download from Microsoft Store">
-  </a>
-  <a href="https://snapcraft.io/flocafe">
-    <img src="https://img.shields.io/badge/Snap-Install-82BEA0?logo=snapcraft&logoColor=white&style=for-the-badge" alt="Install from the Snap Store">
-  </a>
-</p>
+Download the latest installer from [GitHub Releases](https://github.com/vjku/FloCafePrivateCloud/releases).
 
 Releases include Windows installers, macOS DMGs, and Linux AppImage, `.deb`,
 `.rpm`, and Snap packages. For Linux package-specific installation and update
@@ -60,14 +51,14 @@ App Store and Microsoft Store installs should be removed through the relevant st
 
 ```sh
 # macOS
-curl -fsSL https://github.com/FreeOpenSourcePOS/FloCafe/releases/latest/download/uninstall-macos.sh -o uninstall-macos.sh
+curl -fsSL https://github.com/vjku/FloCafePrivateCloud/releases/latest/download/uninstall-macos.sh -o uninstall-macos.sh
 chmod +x uninstall-macos.sh
 ./uninstall-macos.sh
 ```
 
 ```powershell
 # Windows PowerShell
-irm https://github.com/FreeOpenSourcePOS/FloCafe/releases/latest/download/uninstall-windows.ps1 -OutFile uninstall-windows.ps1
+irm https://github.com/vjku/FloCafePrivateCloud/releases/latest/download/uninstall-windows.ps1 -OutFile uninstall-windows.ps1
 powershell -ExecutionPolicy Bypass -File .\uninstall-windows.ps1
 ```
 
@@ -262,7 +253,7 @@ For pack authoring, validation, and schema details, see the [Tax packs developer
 Setting up a local development environment requires Node.js 22 or later:
 
 ```sh
-git clone https://github.com/FreeOpenSourcePOS/FloCafe.git
+git clone https://github.com/vjku/FloCafePrivateCloud.git
 cd FloCafe
 npm install
 npm run dev
@@ -300,9 +291,9 @@ If FloCafe is useful to you, consider starring the repository.
 - **Linux setup & support:** [docs/linux.md](docs/linux.md)
 - **Internationalization & translations:** [docs/i18n.md](docs/i18n.md)
 - **Google Drive backup setup:** [docs/google-drive-setup.md](docs/google-drive-setup.md)
-- **Community discussion:** [Reddit r/FloPOS](https://www.reddit.com/r/FloPOS/)
-- **Bug reports & feature proposals:** [GitHub Issues](https://github.com/FreeOpenSourcePOS/FloCafe/issues)
-- **General questions & ideas:** [GitHub Discussions](https://github.com/FreeOpenSourcePOS/FloCafe/discussions)
+- **Community discussion:** [Reddit r/FloPOS (banned)](https://www.reddit.com/r/FloPOS/)
+- **Bug reports & feature proposals:** [GitHub Issues](https://github.com/vjku/FloCafePrivateCloud/issues)
+- **General questions & ideas:** [GitHub Discussions](https://github.com/vjku/FloCafePrivateCloud/discussions)
 
 ## License
 

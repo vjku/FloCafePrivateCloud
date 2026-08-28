@@ -2,6 +2,21 @@
 
 All notable changes to Flo Cafe are documented here. Dates are release dates, not commit dates. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [3.3.1-beta.3.4] - 2026-08-28
+
+### Added
+- **Settings → Privacy:** Added an "App update checks" toggle (`auto_update_consent`). FloCafePrivateCloud never contacts GitHub for releases unless you explicitly enable it; when on, you choose Download and installation still requires your PIN.
+- **Settings → Tax Configuration:** Added an "Upstream tax-pack catalog" toggle (`tax_pack_catalog_consent`) that gates catalog and update checks against the upstream tax-pack repository. Off by default — no catalog or update requests leave the device unless you turn it on; installing a pack you have already downloaded stays available.
+- Added a daily upstream-sync workflow (`.github/workflows/sync-upstream.yml`) that fetches upstream FloCafe, plus an egress-guard workflow (`.github/workflows/egress-guard.yml`) and `scripts/check-upstream-egress.cjs` that block any PR introducing new network egress without an explicit consent gate.
+
+### Changed
+- The auto-updater feed now points at the `vjku/FloCafePrivateCloud` repository instead of upstream; silent auto-download is disabled (`autoDownload = false`), so updates are never fetched without an explicit Download action.
+- `GET /tax-packs/catalog` and `GET /tax-packs/updates` now return `403` with `tax_pack_catalog_consent_required` unless the catalog consent is enabled.
+- README is now the FloCafePrivateCloud fork readme: it identifies the fork, its objectives, the upstream relationship, and the intent to upstream changes via pull requests after a settling period.
+
+### Fixed
+- (none)
+
 ## [3.3.1-beta.3.3] - 2026-08-28
 
 ### Added
