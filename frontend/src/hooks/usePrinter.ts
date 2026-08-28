@@ -116,6 +116,8 @@ export const usePrinterStore = create<PrinterState>()(
             printerUseUnicode,
             printerArabicShaping,
             printerTrimDecimals,
+            receiptPoweredByFloPOS,
+            businessWebsite,
           } = usePosSettingsStore.getState();
 
           const isReprint = opts?.isReprint ?? false;
@@ -139,6 +141,8 @@ export const usePrinterStore = create<PrinterState>()(
               useUnicode: printerUseUnicode,
               isReprint,
               trimDecimals: printerTrimDecimals,
+              includePoweredByFloPOS: receiptPoweredByFloPOS,
+              website: businessWebsite || undefined,
             });
             return billTemplateWarning ? [billTemplateWarning] : [];
           };
@@ -203,6 +207,8 @@ export const usePrinterStore = create<PrinterState>()(
             isReprint,
             trimDecimals: printerTrimDecimals,
             languages,
+            includePoweredByFloPOS: receiptPoweredByFloPOS,
+            website: businessWebsite || undefined,
           };
 
           let bytes: Uint8Array;
@@ -227,6 +233,8 @@ export const usePrinterStore = create<PrinterState>()(
           const {
             printerUseUnicode, printerArabicShaping, printerTrimDecimals, printerPaperSize,
             billTaxRegistrationNumber, billAddress, billPhone, billFooterMessage,
+            receiptPoweredByFloPOS,
+            businessWebsite,
             billShowName, billShowAddress, billShowPhone, billShowTaxId,
             billShowTaxBreakdown, billShowCustomerName, billShowCustomerPhone, billShowTableNumber,
           } = usePosSettingsStore.getState();
@@ -266,6 +274,8 @@ export const usePrinterStore = create<PrinterState>()(
               showTableNumber: billShowTableNumber,
               useUnicode: printerUseUnicode,
               trimDecimals: printerTrimDecimals,
+              includePoweredByFloPOS: receiptPoweredByFloPOS,
+              website: businessWebsite || undefined,
             });
             return [];
           }
@@ -288,6 +298,8 @@ export const usePrinterStore = create<PrinterState>()(
             arabicShaping: printerArabicShaping,
             trimDecimals: printerTrimDecimals,
             rawEscPos: true,
+            includePoweredByFloPOS: receiptPoweredByFloPOS,
+            website: businessWebsite || undefined,
           }, warnings);
           set({ lastPrintedBytes: bytes });
           await printerService.print(bytes);

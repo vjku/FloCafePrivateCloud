@@ -16,8 +16,6 @@ import { readCountryProvenance } from './country-provenance';
 import log from 'electron-log';
 import { ensureTelemetryAnonId, isTelemetryEnabled, getSettingValue, parseDbTimestamp, upsertTelemetryLastPing } from '../db';
 
-export const TELEMETRY_URL = 'https://telemetry.flopos.com/collect';
-
 const REQUEST_TIMEOUT_MS = 8_000;
 const DAILY_PING_INTERVAL_MS = 60 * 60_000; // check hourly, send at most once/24h
 const DAILY_PING_MIN_GAP_MS = 24 * 60 * 60_000;
@@ -32,9 +30,9 @@ function matrixOffline(): boolean {
 }
 
 /**
- * Configurable telemetry endpoint. Empty/blank means telemetry is disabled
- * (see isTelemetryEnabled in db.ts). The TELEMETRY_URL constant is kept only as
- * a documented default reference; the runtime endpoint comes from settings.
+ * Configurable telemetry endpoint. The runtime endpoint comes exclusively from
+ * the operator-configured `telemetry_url` setting (see db.ts); an empty/blank
+ * value means telemetry is disabled (see isTelemetryEnabled in db.ts).
  */
 function getTelemetryUrl(): string {
   const url = getSettingValue('telemetry_url');

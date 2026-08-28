@@ -148,6 +148,7 @@ export function buildBillPrintData(order: any, bill: any, business: any, isRepri
       taxRegistrationNumber: String(business?.taxRegistrationNumber ?? ''),
       taxIdLabel: getCountryByCode(String(business?.country ?? ''))?.taxIdLabel || '',
       instagramHandle: String(business?.instagram_handle ?? ''),
+      website: String(business?.website ?? ''),
       footerNote: String(business?.footer_note ?? ''),
       customerName: String(business?.customer_name ?? ''),
       customerPhone: String(business?.customer_phone ?? ''),
@@ -210,6 +211,8 @@ export interface ClassicDocumentRenderOptions {
   readonly useUnicode: boolean;
   readonly arabicShaping: boolean;
   readonly cutMode: PrinterCutMode;
+  /** When true, append the vendor "Powered by FloPOS" footer line. */
+  readonly includePoweredByFloPOS?: boolean;
 }
 
 function labelOf(label: SemanticLabel): string {
@@ -304,6 +307,7 @@ export function renderBillDocumentToClassicLines(
         if (block.phone && block.phoneLabel) footerLines.push(labelOf(block.phoneLabel) + ': ' + block.phone.text);
         if (block.taxId) footerLines.push(labelOf(block.taxId.label) + ': ' + block.taxId.value.text);
         if (block.instagramHandle) footerLines.push(block.instagramHandle.text);
+        if (block.website) footerLines.push(block.website.text);
         if (footerLines.length > 0) {
           segment.post.push(dash);
           for (const footerLine of footerLines) pushCenteredWrapped(segment.post, footerLine, cols);
@@ -497,7 +501,7 @@ export function renderBillDocumentToClassicLines(
     }
   }
 
-  appendPoweredByFooter(lines);
+  if (options.includePoweredByFloPOS === true) appendPoweredByFooter(lines);
   lines.push('{CUT}');
 
   return lines;
@@ -553,6 +557,7 @@ export function renderClassicReceiptViaDocument(
     useUnicode: opts.useUnicode,
     arabicShaping: opts.arabicShaping,
     cutMode: opts.cutMode,
+    includePoweredByFloPOS: business?.includePoweredByFloPOS === true,
   });
   const data = buildEscPos(lines, opts.useUnicode, { cutMode: opts.cutMode, arabicShaping: opts.arabicShaping, columns: opts.columns }, warnings);
   return { document, lines, data, warnings };

@@ -77,6 +77,7 @@ export function renderMerchantReceiptViaDocument(
     useUnicode: opts.useUnicode,
     arabicShaping: opts.arabicShaping,
     cutMode: opts.cutMode,
+    includePoweredByFloPOS: business?.includePoweredByFloPOS === true,
   } as const;
 
   const finish = (lines: string[], fellBackToClassic: boolean) => {

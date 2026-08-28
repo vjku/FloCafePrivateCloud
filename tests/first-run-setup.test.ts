@@ -207,11 +207,11 @@ assert.equal(getCurrentSchemaVersion(), MIGRATIONS[MIGRATIONS.length - 1].versio
     assert.equal(setting('billing_type'), 'prepaid');
     assert.equal(setting('tables_required'), 'false');
     assert.equal(setting('onboarding_completed'), 'true');
-    assert.equal(setting('anonymous_data_consent'), 'true', 'setup ignores a client-supplied consent field');
+    assert.equal(setting('anonymous_data_consent'), 'false', 'setup derives anonymous_data_consent from telemetry enablement; off when no telemetry URL is supplied');
     assert.equal(setting('telemetry_enabled'), 'false', 'telemetry is off by default after setup');
     assert.equal(setting('telemetry_url'), '', 'telemetry_url defaults to empty after setup');
     assert.equal(setting('telemetry_scope'), 'usage_stats,country,app_version,platform,session_duration,feature_usage,error_diagnostics');
-    assert.equal(setting('diagnostics_consent'), 'true', 'store diagnostics are on by default for a new install');
+    assert.equal(setting('diagnostics_consent'), 'false', 'store diagnostics are off by default for a new install');
     assert.equal(profileRefreshes, 1, 'setup immediately refreshes the completed store profile in FloAdmin');
     assert.equal(count('categories'), 2, 'express setup seeds minimal categories');
     assert.equal(count('products'), 4, 'express setup seeds minimal products');
@@ -365,12 +365,13 @@ assert.equal(getCurrentSchemaVersion(), MIGRATIONS[MIGRATIONS.length - 1].versio
         name: 'Tel Owner', email: 'tel-owner@example.com', password: 'TestPass123',
         business_type: 'restaurant', setup_profile: 'empty', service_model: 'qsr',
         terms_accepted: true,
-        telemetry_url: 'https://telemetry.flopos.com/collect',
+        telemetry_url: 'https://telemetry.example.com/collect',
       }),
     });
     assert.equal(optIn.status, 200, `setup succeeds with a telemetry URL (got ${optIn.status})`);
-    assert.equal(setting('telemetry_url'), 'https://telemetry.flopos.com/collect', 'the telemetry URL is persisted from setup');
+    assert.equal(setting('telemetry_url'), 'https://telemetry.example.com/collect', 'the telemetry URL is persisted from setup');
     assert.equal(setting('telemetry_enabled'), 'true', 'telemetry is enabled when a URL is supplied at setup');
+    assert.equal(setting('anonymous_data_consent'), 'true', 'anonymous_data_consent is granted when telemetry is enabled at setup');
     console.log('   ✓ setup persists an explicit telemetry_url and enables telemetry');
   } finally {
     await new Promise<void>((resolve) => telemetryServer.close(() => resolve()));

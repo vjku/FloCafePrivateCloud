@@ -440,6 +440,8 @@ router.post('/print-bill', requireRole(...ROLE_ACCESS.ownerManagerCashier), asyn
       currency_symbol: getCurrencySymbol(settings.currency || 'INR', getCountryByCode(settings.country || 'IN')?.locale) || settings.currency_symbol || '₹',
       country: settings.country || 'IN',
       instagram_handle: settings.instagram_handle || '',
+      website: settings.business_website || '',
+      includePoweredByFloPOS: settings.receipt_powered_by_flopos === 'true',
       customer_name: customer?.name || '',
       customer_phone: customer?.phone
         ? (customer.country_code && !customer.phone.startsWith(customer.country_code)

@@ -21,7 +21,11 @@ Module._load = function (request: string, parent: unknown, isMain: boolean) {
 };
 
 const { initDatabase, getDatabase, closeDatabase, now } = require('../main/db');
-const { telemetry, sendEvent, TELEMETRY_URL } = require('../main/services/telemetry');
+const { telemetry, sendEvent } = require('../main/services/telemetry');
+
+// Fixture stand-in for an operator-configured telemetry endpoint. The real
+// runtime endpoint is the `telemetry_url` setting; this is only a test value.
+const TELEMETRY_URL = 'https://telemetry.example.com/collect';
 
 async function main() {
   initDatabase();

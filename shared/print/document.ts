@@ -163,6 +163,7 @@ export interface BusinessSnapshot {
   /** Country-profile tax ID label (e.g. "GSTIN"), resolved by the caller. */
   readonly taxIdLabel: string;
   readonly instagramHandle: string;
+  readonly website: string;
   readonly footerNote: string;
   readonly customerName: string;
   readonly customerPhone: string;
@@ -236,6 +237,7 @@ export interface BusinessHeaderBlock {
   readonly address: DirectionalText | null;
   readonly phone: DirectionalText | null;
   readonly instagramHandle: DirectionalText | null;
+  readonly website: DirectionalText | null;
   /** Tax registration line, present per merchant flag + tax applicability. */
   readonly taxId: { readonly label: SemanticLabel; readonly value: DirectionalText } | null;
   /** Label used when the business phone renders as a labeled contact line. */
@@ -480,6 +482,7 @@ export function buildBillDocument(printData: PrintData, printContext: PrintConte
     address: business.showAddress ? optionalDirectional(business.address, base) : null,
     phone: business.showPhone ? optionalDirectional(business.phone, base) : null,
     instagramHandle: optionalDirectional(business.instagramHandle, base),
+    website: optionalDirectional(business.website, base),
     taxId: showTaxIdLine
       ? Object.freeze({
         label: literalLabel(business.taxIdLabel.length > 0 ? business.taxIdLabel : 'Tax ID'),

@@ -2,6 +2,18 @@
 
 All notable changes to Flo Cafe are documented here. Dates are release dates, not commit dates. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [3.3.1-beta.3.3] - 2026-08-28
+
+### Added
+- **Settings → Business:** Added a Business Website field that prints on the receipt header when set.
+- **Settings → Privacy:** Added a "Show Powered by FloPOS on receipts" toggle so operators can choose to display the vendor footer line.
+
+### Changed
+- Store diagnostics is now **off by default** (`diagnostics_consent` defaults to `false`), including for legacy installs that previously had it enabled; only installations that explicitly enabled it before this change keep sending diagnostics. Missing-key installs now default to off.
+- The vendor "Powered by FloPOS" receipt footer line is now **off by default**; it is printed only when the operator enables the new toggle.
+- Removed the legacy `TELEMETRY_URL` constant from the telemetry service; the runtime endpoint is exclusively the operator-configured `telemetry_url` setting (empty by default, so no data is sent unless explicitly configured).
+- Anonymous usage-telemetry consent (`anonymous_data_consent`) now defaults to **off** and is derived from the telemetry opt-in — it is enabled only when the operator configures a `telemetry_url` and enables telemetry, rather than being hardcoded on during setup.
+
 ## [3.3.0.2] - 2026-08-28
 
 ### Added
@@ -23,7 +35,7 @@ All notable changes to Flo Cafe are documented here. Dates are release dates, no
 
 ### Changed
 - Anonymous telemetry is now **off by default** (`telemetry_enabled` defaults to `false`); an empty `telemetry_url` also disables it, so legacy installs that previously had telemetry forced on no longer send data until explicitly re-enabled.
-- Telemetry payloads are now sent to the operator-configured `telemetry_url` (previously hardcoded to the FloPOS endpoint); the `TELEMETRY_URL` constant remains only as a documented default.
+- Telemetry payloads are now sent to the operator-configured `telemetry_url` (previously hardcoded to the FloPOS endpoint); the legacy `TELEMETRY_URL` constant was retained only as a documented default (removed in 3.3.0.3).
 
 ## [3.3.0] - 2026-08-21
 

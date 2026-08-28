@@ -48,6 +48,8 @@ export interface PosSettingsState {
   billShowCustomerName: boolean;
   billShowCustomerPhone: boolean;
   billShowTableNumber: boolean;
+  receiptPoweredByFloPOS: boolean;
+  businessWebsite: string;
   // Thermal printer unicode support
   printerUseUnicode: boolean;
   // Printer firmware performs Arabic/Persian contextual shaping and
@@ -93,6 +95,8 @@ export interface PosSettingsState {
   setBillShowCustomerName: (v: boolean) => void;
   setBillShowCustomerPhone: (v: boolean) => void;
   setBillShowTableNumber: (v: boolean) => void;
+  setReceiptPoweredByFloPOS: (v: boolean) => void;
+  setBusinessWebsite: (v: string) => void;
   setBillingType: (v: 'postpaid' | 'prepaid') => void;
   setTablesRequired: (v: boolean) => void;
   setPrinterUseUnicode: (v: boolean) => void;
@@ -137,6 +141,8 @@ export const usePosSettingsStore = create<PosSettingsState>()(
       billShowCustomerName: true,
       billShowCustomerPhone: true,
       billShowTableNumber: true,
+      receiptPoweredByFloPOS: false,
+      businessWebsite: '',
       printerUseUnicode: false,
       printerArabicShaping: false,
       printerTrimDecimals: false,
@@ -176,6 +182,8 @@ export const usePosSettingsStore = create<PosSettingsState>()(
       setBillShowCustomerName: (v) => set({ billShowCustomerName: v }),
       setBillShowCustomerPhone: (v) => set({ billShowCustomerPhone: v }),
       setBillShowTableNumber: (v) => set({ billShowTableNumber: v }),
+      setReceiptPoweredByFloPOS: (v) => set({ receiptPoweredByFloPOS: v }),
+      setBusinessWebsite: (v) => set({ businessWebsite: v }),
       setBillingType: (v) => set({ billingType: v }),
       setTablesRequired: (v) => set({ tablesRequired: v }),
       setPrinterUseUnicode: (v) => set({ printerUseUnicode: v }),

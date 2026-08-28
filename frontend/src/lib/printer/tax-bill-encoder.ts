@@ -51,6 +51,10 @@ export interface TaxBillOptions {
   rawEscPos?: boolean;
   /** Hide trailing .00 on printed amounts while keeping non-zero decimals. */
   trimDecimals?: boolean;
+  /** When true, append the vendor "Powered by FloPOS" footer line. */
+  includePoweredByFloPOS?: boolean;
+  /** Business website printed under the store name in the header, if set. */
+  website?: string;
   /**
    * Printer firmware performs Arabic/Persian contextual shaping (#437).
    * Lets pure ASCII+Arabic lines through the unsupported-character guard.
@@ -131,6 +135,7 @@ export function buildTaxBillBytes(
     trimDecimals = false,
     rawEscPos = true,
     arabicShaping = false,
+    website,
   } = opts;
   const cols = CHARS[paperWidth];
   const rawCurrency = getCurrencySymbol(tenant.currency ?? 'INR', getCountryByCode(tenant.country ?? 'IN')?.locale);
@@ -152,6 +157,9 @@ export function buildTaxBillBytes(
     safePrinterText(enc, truncate(tenant.business_name, 16), warnings, true, arabicShaping, Math.floor(cols / 2));
     enc.width(1).height(1);
     enc.bold(false).newline();
+  }
+  if (website) {
+    safePrinterText(enc, truncate(website, cols), warnings, false, arabicShaping, cols).newline();
   }
 
   if (address) {
@@ -273,7 +281,7 @@ export function buildTaxBillBytes(
       enc.text('Tax included where applicable').newline();
     }
   }
-  printPoweredByFooter(enc);
+  if (opts.includePoweredByFloPOS === true) printPoweredByFooter(enc);
 
   enc.newline().newline().newline().cut();
 

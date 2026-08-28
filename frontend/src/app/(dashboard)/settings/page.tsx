@@ -1245,7 +1245,7 @@ export default function SettingsPage() {
     billingType: 'postpaid' | 'prepaid';
     tablesRequired: boolean;
     taxRegistered: boolean;
-    taxRegistrationNumber: string; businessAddress: string; businessPhone: string; instagramHandle: string;
+    taxRegistrationNumber: string; businessAddress: string; businessPhone: string; instagramHandle: string; businessWebsite: string;
     currencyDisplay: CurrencyDisplay;
     numberDigits: DigitMode;
     calendar: CalendarMode;
@@ -1254,7 +1254,7 @@ export default function SettingsPage() {
     businessName: '', countryCode: '', timezone: '', currency: '', billingType: 'postpaid',
     tablesRequired: true,
     taxRegistered: false,
-    taxRegistrationNumber: '', businessAddress: '', businessPhone: '', instagramHandle: '',
+    taxRegistrationNumber: '', businessAddress: '', businessPhone: '', instagramHandle: '', businessWebsite: '',
     currencyDisplay: 'rial',
     numberDigits: 'locale',
     calendar: 'locale',
@@ -1370,6 +1370,9 @@ export default function SettingsPage() {
   const [diagnosticsConsent, setDiagnosticsConsent] = useState(false);
   const [savingDiagnosticsConsent, setSavingDiagnosticsConsent] = useState(false);
 
+  const [receiptPoweredByFloPOS, setReceiptPoweredByFloPOS] = useState(false);
+  const [savingReceiptPoweredByFloPOS, setSavingReceiptPoweredByFloPOS] = useState(false);
+
   type GoogleDriveStatus = {
     configured: boolean;
     secure_storage_available: boolean;
@@ -1453,12 +1456,14 @@ export default function SettingsPage() {
         businessAddress: d.business_address || '',
         businessPhone: d.business_phone || '',
         instagramHandle: d.instagram_handle || '',
+        businessWebsite: d.business_website || '',
         currencyDisplay: d.currency_display === 'toman' ? 'toman' : d.currency_display === 'toman_short' ? 'toman_short' : 'rial',
         numberDigits: d.number_digits === 'latin' ? 'latin' : 'locale',
         calendar: d.calendar === 'persian' ? 'persian' : d.calendar === 'gregorian' ? 'gregorian' : 'locale',
       };
       setSavedBusiness(loaded);
       setForm(loaded);
+      posSettings.setBusinessWebsite(loaded.businessWebsite);
       setTaxIdFormat(d.tax_id_format || null);
       setTaxIdFormatCountryCode(loaded.countryCode);
       const billDisplay = {
@@ -1610,9 +1615,18 @@ export default function SettingsPage() {
     });
 
     api.get('/settings/diagnostics_consent').then((res) => {
-      setDiagnosticsConsent(res.data.setting?.value !== 'false');
+      setDiagnosticsConsent(res.data.setting?.value === 'true');
     }).catch(() => {
-      setDiagnosticsConsent(true);
+      setDiagnosticsConsent(false);
+    });
+
+    api.get('/settings/receipt_powered_by_flopos').then((res) => {
+      const enabled = res.data.setting?.value === 'true';
+      setReceiptPoweredByFloPOS(enabled);
+      posSettings.setReceiptPoweredByFloPOS(enabled);
+    }).catch(() => {
+      setReceiptPoweredByFloPOS(false);
+      posSettings.setReceiptPoweredByFloPOS(false);
     });
 
     fetchGoogleDriveStatus();
@@ -1808,12 +1822,14 @@ export default function SettingsPage() {
         businessAddress: d.business_address || '',
         businessPhone: d.business_phone || '',
         instagramHandle: d.instagram_handle || '',
+        businessWebsite: d.business_website || '',
         currencyDisplay: d.currency_display === 'toman' ? 'toman' : d.currency_display === 'toman_short' ? 'toman_short' : 'rial',
         numberDigits: d.number_digits === 'latin' ? 'latin' : 'locale',
         calendar: d.calendar === 'persian' ? 'persian' : d.calendar === 'gregorian' ? 'gregorian' : 'locale',
       };
       setSavedBusiness(loaded);
       setForm(loaded);
+      posSettings.setBusinessWebsite(loaded.businessWebsite);
       setTaxIdFormat(d.tax_id_format || null);
       setTaxIdFormatCountryCode(loaded.countryCode);
       // Sync to pos-settings store for bill printing
@@ -1956,6 +1972,20 @@ export default function SettingsPage() {
       toast.error(t('saveFailed'));
     } finally {
       setSavingDiagnosticsConsent(false);
+    }
+  };
+
+  const saveReceiptPoweredByFloPOS = async (enabled: boolean) => {
+    const previous = receiptPoweredByFloPOS;
+    setReceiptPoweredByFloPOS(enabled);
+    setSavingReceiptPoweredByFloPOS(true);
+    try {
+      await api.put('/settings/receipt_powered_by_flopos', { value: enabled ? 'true' : 'false' });
+    } catch {
+      setReceiptPoweredByFloPOS(previous);
+      toast.error(t('saveFailed'));
+    } finally {
+      setSavingReceiptPoweredByFloPOS(false);
     }
   };
 
@@ -2199,6 +2229,7 @@ export default function SettingsPage() {
         business_address: form.businessAddress,
         business_phone: normalizedBusinessPhone,
         instagram_handle: form.instagramHandle,
+        business_website: form.businessWebsite,
         currency_display: form.currencyDisplay,
         number_digits: form.numberDigits,
         calendar: form.calendar,
@@ -2667,6 +2698,17 @@ export default function SettingsPage() {
                     <p className="font-medium text-gray-900">{form.instagramHandle || '—'}</p>
                   )}
                   <p className="text-xs text-gray-500 mt-1">{t('instagramHint')}</p>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-500 mb-1">{t('businessWebsite')}</label>
+                  {isAdmin ? (
+                    <input type="text" value={form.businessWebsite} onChange={(e) => setForm((p) => ({ ...p, businessWebsite: e.target.value }))}
+                      placeholder={t('businessWebsitePlaceholder')}
+                      className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-brand" />
+                  ) : (
+                    <p className="font-medium text-gray-900">{form.businessWebsite || '—'}</p>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">{t('businessWebsiteHint')}</p>
                 </div>
               </div>
 
@@ -3718,9 +3760,22 @@ export default function SettingsPage() {
                   />
                   <span className="text-sm text-gray-700">{t('storeDiagnostics')}</span>
                 </label>
-                <p className="text-xs text-gray-500 mt-1">{t('storeDiagnosticsHint')}</p>
+                  <p className="text-xs text-gray-500 mt-1">{t('storeDiagnosticsHint')}</p>
+                </div>
+                <div className="mt-4">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={receiptPoweredByFloPOS}
+                      disabled={savingReceiptPoweredByFloPOS}
+                      onChange={(e) => saveReceiptPoweredByFloPOS(e.target.checked)}
+                      className="rounded border-gray-300 text-brand focus:ring-brand"
+                    />
+                    <span className="text-sm text-gray-700">{t('receiptPoweredByFloPOS')}</span>
+                  </label>
+                  <p className="text-xs text-gray-500 mt-1">{t('receiptPoweredByFloPOSHint')}</p>
+                </div>
               </div>
-            </div>
 
             {isOwner && (
               <div className="rounded-xl border border-gray-100 bg-white p-6">

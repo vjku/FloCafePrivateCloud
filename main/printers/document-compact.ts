@@ -62,6 +62,8 @@ export interface CompactDocumentRenderOptions {
   readonly useUnicode: boolean;
   readonly arabicShaping: boolean;
   readonly cutMode: PrinterCutMode;
+  /** When true, append the vendor "Powered by FloPOS" footer line. */
+  readonly includePoweredByFloPOS?: boolean;
 }
 
 function labelOf(label: SemanticLabel): string {
@@ -202,9 +204,10 @@ export function renderBillDocumentToCompactLines(
   if (header?.address) pushWrapped(lines, header.address.text, cols);
   if (header?.phone && header.phoneLabel) pushWrapped(lines, labelOf(header.phoneLabel) + ': ' + header.phone.text, cols);
   if (header?.taxId) pushWrapped(lines, labelOf(header.taxId.label) + ': ' + header.taxId.value.text, cols);
+  if (header?.website) pushWrapped(lines, header.website.text, cols);
   if (messages?.footerNote) pushCenteredWrapped(lines, messages.footerNote.text, cols);
   else lines.push('{CENTER}' + labelOf(messages!.thankYou!) + '{/CENTER}');
-  appendPoweredByFooter(lines);
+  if (options.includePoweredByFloPOS === true) appendPoweredByFooter(lines);
   lines.push('{CUT}');
 
   return lines;
@@ -257,6 +260,7 @@ export function renderCompactReceiptViaDocument(
     useUnicode: opts.useUnicode,
     arabicShaping: opts.arabicShaping,
     cutMode: opts.cutMode,
+    includePoweredByFloPOS: business?.includePoweredByFloPOS === true,
   });
   const data = buildEscPos(lines, opts.useUnicode, { cutMode: opts.cutMode, arabicShaping: opts.arabicShaping, columns: opts.columns }, warnings);
   return { document, lines, data, warnings };

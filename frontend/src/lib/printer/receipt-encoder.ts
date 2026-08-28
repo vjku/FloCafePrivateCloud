@@ -61,6 +61,10 @@ export interface ReceiptOptions {
   showFooter?: boolean;
   /** Extra line of custom text printed below the footer. */
   footerNote?: string;
+  /** When true, append the vendor "Powered by FloPOS" footer line. */
+  includePoweredByFloPOS?: boolean;
+  /** Business website printed under the store name in the header, if set. */
+  website?: string;
   /** Tax registration number to print in footer / header */
   taxRegistrationNumber?: string;
   /** Business address to print */
@@ -392,6 +396,9 @@ export function buildClassicReceiptBytes(
     safePrinterText(enc, truncate(header.name.text, 16), warnings, true, arabicShaping, Math.floor(cols / 2));
     enc.width(1).height(1).bold(false).newline();
   }
+  if (header?.website) {
+    safePrinterText(enc, truncate(header.website.text, cols), warnings, false, arabicShaping, cols).newline();
+  }
 
   // Document meta: table, customer, invoice number + timestamp.
   if (meta?.table) {
@@ -535,7 +542,7 @@ export function buildClassicReceiptBytes(
       safePrinterText(enc, truncate(messages.footerNote.text, cols), warnings, false, arabicShaping, cols).newline();
     }
   }
-  printPoweredByFooter(enc);
+  if (opts.includePoweredByFloPOS === true) printPoweredByFooter(enc);
 
   enc.newline().newline().newline().cut();
 
@@ -676,7 +683,7 @@ export function buildCompactReceiptBytes(
   if (messages?.footerNote) {
     safePrinterText(enc, truncate(messages.footerNote.text, cols), warnings, false, arabicShaping, cols).newline();
   }
-  printPoweredByFooter(enc);
+  if (opts.includePoweredByFloPOS === true) printPoweredByFooter(enc);
 
   enc.newline().newline().newline().cut();
 
@@ -733,6 +740,9 @@ export function buildDetailedReceiptBytes(
     enc.align('center').bold(true).width(2).height(2);
     safePrinterText(enc, truncate(tenant.business_name, 16), warnings, true, arabicShaping, Math.floor(cols / 2));
     enc.width(1).height(1).bold(false).newline();
+  }
+  if (opts.website) {
+    safePrinterText(enc, truncate(opts.website, cols), warnings, false, arabicShaping, cols).newline();
   }
 
   if (taxRegistrationNumber) {
@@ -855,7 +865,7 @@ export function buildDetailedReceiptBytes(
   if (footerNote) {
     safePrinterText(enc, truncate(footerNote, cols), warnings, false, arabicShaping).newline();
   }
-  printPoweredByFooter(enc);
+  if (opts.includePoweredByFloPOS === true) printPoweredByFooter(enc);
 
   enc.newline().newline().newline().cut();
 

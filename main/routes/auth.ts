@@ -907,7 +907,7 @@ router.post('/setup/initialize', (req: Request, res: Response) => {
         // Only a country that differs from the seeded default — or a client
         // that reports the selection outright — counts.
         ...countryConfirmationPatch(country, getSettingValue('country'), req.body.country_selected),
-        anonymous_data_consent: 'true',
+        anonymous_data_consent: telemetryEnabled,
         telemetry_enabled: telemetryEnabled,
         telemetry_url: normalizedTelemetryUrl,
         telemetry_scope: 'usage_stats,country,app_version,platform,session_duration,feature_usage,error_diagnostics',

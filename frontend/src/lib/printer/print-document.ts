@@ -42,6 +42,7 @@ export interface BillBusinessOptions {
   phone?: string;
   footerNote?: string;
   instagramHandle?: string;
+  website?: string;
   taxRegistrationNumber?: string;
   /** Tax-id line requested by the surface (`includeTaxId`). */
   includeTaxId?: boolean;
@@ -203,6 +204,7 @@ export function buildBillPrintData(bill: Bill, opts: BillBusinessOptions = {}): 
       taxRegistrationNumber: String(opts.taxRegistrationNumber ?? ''),
       taxIdLabel: String(opts.taxIdLabel ?? ''),
       instagramHandle: String(opts.instagramHandle ?? ''),
+      website: String(opts.website ?? ''),
       footerNote: String(opts.footerNote ?? ''),
       customerName: String(order?.customer?.name ?? ''),
       customerPhone: String(order?.customer?.phone ?? ''),

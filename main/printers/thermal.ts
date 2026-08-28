@@ -965,6 +965,7 @@ function renderEscposLineTemplateV1(payload: any, profile: { columns: number; la
       : String(biz.name);
     lines.push('{STORE_NAME}{CENTER}{BOLD}' + truncateShapedLine(name, cols, arabicShaping) + '{/BOLD}{/CENTER}');
   }
+  if (biz.website) lines.push('{CENTER}' + truncateShapedLine(String(biz.website), cols, arabicShaping) + '{/CENTER}');
   lines.push(bar);
   lines.push(`{CENTER}${title}{/CENTER}`);
   lines.push(bar);
@@ -1050,7 +1051,7 @@ function renderEscposLineTemplateV1(payload: any, profile: { columns: number; la
   if (showTaxRegistration && biz.taxRegistrationNumber) pushWrapped(lines, configuredTaxLabel + ': ' + biz.taxRegistrationNumber, cols);
   if (payload?.footer?.useConfiguredFooterNote !== false && biz.footer_note) pushCenteredWrapped(lines, biz.footer_note, cols);
   else lines.push('{CENTER}' + (fitTemplateLabel(String(payload?.footer?.defaultMessage || ''), cols) || resolveTemplateLabel(payload?.labels, 'footerThanks', lang, cols)) + '{/CENTER}');
-  if (payload?.footer?.includePoweredByFloPOS !== false) appendPoweredByFooter(lines);
+  if (biz.includePoweredByFloPOS === true) appendPoweredByFooter(lines);
   lines.push('{CUT}');
 
   return buildEscPos(lines, useUnicode, { cutMode, arabicShaping, columns: cols }, warnings);

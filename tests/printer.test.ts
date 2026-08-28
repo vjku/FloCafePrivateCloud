@@ -539,7 +539,7 @@ console.log('\n✅ Test 2: Compact receipt (80mm, 48 cols)');
   assert('renders Cash payment', text.includes('Cash') && text.includes('₹500.00'));
   assert('renders UPI payment', text.includes('UPI') && text.includes('₹450.00'));
   assert('renders tax registration number', text.includes('TAXID-0001'));
-  assert('renders non-configurable FloPOS footer', text.includes('Powered by FloPOS') && text.includes('https://flopos.com'));
+  assert('omits vendor "Powered by FloPOS" footer by default (opt-in)', !text.includes('Powered by FloPOS') && !text.includes('https://flopos.com'));
   assert('long product name is truncated to fit', !text.includes('Truncated By Formatter'));
   assert('ends with cut byte sequence', bytesContain(buf, [GS, 0x56, 0x00]));
 
@@ -551,6 +551,22 @@ console.log('\n✅ Test 2: Compact receipt (80mm, 48 cols)');
 
   console.log('\n   — Rendered compact (80mm) —');
   console.log(visiblePreview(buf, 48));
+}
+
+console.log('\n✅ Test 2a: Vendor "Powered by FloPOS" footer is opt-in');
+{
+  const off = formatReceipt(fixtureOrder, fixtureBill, fixtureBusiness, 'compact', 48, true).toString('utf8');
+  assert('footer absent when includePoweredByFloPOS is not set', !off.includes('Powered by FloPOS'));
+
+  const on = formatReceipt(
+    fixtureOrder,
+    fixtureBill,
+    { ...fixtureBusiness, includePoweredByFloPOS: true },
+    'compact',
+    48,
+    true,
+  ).toString('utf8');
+  assert('footer present when includePoweredByFloPOS is true', on.includes('Powered by FloPOS') && on.includes('https://flopos.com'));
 }
 
 console.log('\n✅ Test 3: Compact receipt on 58mm paper (32 cols)');
@@ -623,7 +639,7 @@ console.log('\n✅ Test 4: Classic receipt template');
 
   assert('renders business name', text.includes('Flo Test Cafe'));
   assert('renders item and total', text.includes('Cheeseburger') && text.includes('₹950.00'));
-  assert('renders non-configurable FloPOS footer', text.includes('Powered by FloPOS') && text.includes('https://flopos.com'));
+  assert('omits vendor "Powered by FloPOS" footer by default (opt-in)', !text.includes('Powered by FloPOS') && !text.includes('https://flopos.com'));
   assert('ends with cut', bytesContain(buf, [GS, 0x56, 0x00]));
 
   console.log('\n   — Rendered classic —');
@@ -637,7 +653,7 @@ console.log('\n✅ Test 5: Tax-specific labels fall back to the default template
 
   assert('legacy detailed label renders the default classic receipt', text.includes('Invoice #:'));
   assert('legacy detailed label does not render the GST-style tax invoice', !text.includes('TAX INVOICE'));
-  assert('renders non-configurable FloPOS footer', text.includes('Powered by FloPOS') && text.includes('https://flopos.com'));
+  assert('omits vendor "Powered by FloPOS" footer by default (opt-in)', !text.includes('Powered by FloPOS') && !text.includes('https://flopos.com'));
 
   console.log('\n   — Rendered detailed fallback —');
   console.log(visiblePreview(buf, 48));

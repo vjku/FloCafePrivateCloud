@@ -91,6 +91,8 @@ export interface WebPrintOptions {
   phone?: string;
   footerNote?: string;
   businessName?: string;
+  includePoweredByFloPOS?: boolean;
+  website?: string;
   showBusinessName?: boolean;
   showTaxBreakdown?: boolean;
   showCustomerName?: boolean;
@@ -250,6 +252,7 @@ export function generateBillHtml(
     phone,
     footerNote,
     businessName,
+    includePoweredByFloPOS = false,
     showBusinessName = true,
     showTaxBreakdown = true,
     showCustomerName = true,
@@ -257,6 +260,7 @@ export function generateBillHtml(
     showTableNumber = true,
     isReprint = false,
     trimDecimals = false,
+    website,
   } = opts;
 
   const languages = resolvePrintLanguages(opts);
@@ -268,6 +272,7 @@ export function generateBillHtml(
     address,
     phone,
     footerNote,
+    website,
     taxRegistrationNumber,
     includeTaxId: includeTaxId && !!taxRegistrationNumber,
     taxIdLabel: resolveTaxIdLabel(tenant.country, lang),
@@ -435,7 +440,7 @@ export function generateBillHtml(
     <div class="footer">
       ${messages?.footerNote ? `<p>${escapeHtml(messages.footerNote.text)}</p>` : `<p>${escapeHtml(L.thankYou)}</p>`}
       ${hasTax ? `<p>${escapeHtml(L.taxIncluded)}</p>` : ''}
-      <p class="powered-by">${escapeHtml(RECEIPT_BRANDING_NAME)}<br>${escapeHtml(RECEIPT_BRANDING_URL)}</p>
+      ${includePoweredByFloPOS ? `<p class="powered-by">${escapeHtml(RECEIPT_BRANDING_NAME)}<br>${escapeHtml(RECEIPT_BRANDING_URL)}</p>` : ''}
     </div>
   </div>
 

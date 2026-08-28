@@ -699,10 +699,11 @@ export function isTelemetryEnabled(): boolean {
 
 /**
  * Tier 2 store-attributed diagnostics, kept separate from anonymous telemetry.
- * New installs default to enabled; an owner can switch it off in Settings.
+ * Defaults to disabled (explicit opt-in); an owner enables it in Settings when
+ * support needs it. Existing installs that already enabled it are preserved.
  */
 export function isDiagnosticsConsentEnabled(): boolean {
-  return getSettingValue('diagnostics_consent') !== 'false';
+  return getSettingValue('diagnostics_consent') === 'true';
 }
 
 /**
@@ -3153,7 +3154,7 @@ export const MIGRATIONS: { version: number; name: string; up: () => void }[] = [
     up: () => {
       // This setting is migrated to the product default in v47. Keep the
       // original schema migration safe for databases upgrading through v44.
-      insertSettingIfMissing('diagnostics_consent', 'true');
+      insertSettingIfMissing('diagnostics_consent', 'false');
       db.exec(`
         CREATE TABLE IF NOT EXISTS store_diagnostics_outbox (
           event_id TEXT PRIMARY KEY,
@@ -3274,9 +3275,11 @@ export const MIGRATIONS: { version: number; name: string; up: () => void }[] = [
     version: 47,
     name: 'store_diagnostics_enabled_by_default',
     up: () => {
-      // New installs already receive the v44/v47 default. Preserve an existing
-      // false value because it may represent an owner's explicit opt-out.
-      insertSettingIfMissing('diagnostics_consent', 'true');
+      // New installs already receive the off-by-default seed. Upgraded installs
+      // that never set this also default to off (explicit opt-in); an existing
+      // 'true' (owner already enabled diagnostics) is preserved because
+      // insertSettingIfMissing never overwrites a present value.
+      insertSettingIfMissing('diagnostics_consent', 'false');
     },
   },
   {
@@ -4090,6 +4093,16 @@ export const MIGRATIONS: { version: number; name: string; up: () => void }[] = [
       }
     },
   },
+  {
+    version: 2026082801,
+    name: 'seed_receipt_branding_settings',
+    up: () => {
+      insertSettingIfMissing('business_website', '');
+      insertSettingIfMissing('receipt_powered_by_flopos', 'false');
+      const anonConsent = getSettingValue('telemetry_enabled') === 'true' ? 'true' : 'false';
+      db.prepare(`UPDATE settings SET value = ?, updated_at = ? WHERE key = 'anonymous_data_consent'`).run(anonConsent, now());
+    },
+  },
 ];
 
 function syncBackupBeforeMigration(fromVersion: number, toVersion: number): void {
@@ -4844,6 +4857,8 @@ function seedInstallDefaults(): void {
   insert('business_address', '');
   insert('business_phone', '');
   insert('instagram_handle', '');
+  insert('business_website', '');
+  insert('receipt_powered_by_flopos', 'false');
   insert('tax_registered', 'false');
   insert('tax_registration_number', '');
   insert('state_code', '');
@@ -4860,11 +4875,11 @@ function seedInstallDefaults(): void {
   insert('cloud_reports_enabled', '1');
   insert('cloud_command_polling_enabled', '1');
   insert('cloud_registration_status', 'unregistered');
-  insert('anonymous_data_consent', 'true');
+  insert('anonymous_data_consent', 'false');
   insert('telemetry_url', '');
   insert('telemetry_enabled', 'false');
   insert('telemetry_scope', 'usage_stats,country,app_version,platform,session_duration,feature_usage,error_diagnostics');
-  insert('diagnostics_consent', 'true');
+  insert('diagnostics_consent', 'false');
   insert('kds_enabled', 'true');
   insert('server_app_enabled', 'true');
   insert('kot_printing_enabled', 'true');
