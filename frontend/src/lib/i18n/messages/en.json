@@ -1586,6 +1586,8 @@
     "storeDetails": "Store Details",
     "storeDiagnostics": "Store diagnostics (for support)",
     "storeDiagnosticsHint": "When enabled, sends typed error details (like which printer step failed and on what connection) attributed to this store, so support can diagnose problems without you having to reproduce them. Never includes customer names, phone numbers, addresses, or order contents. Off by default, separate from anonymous usage telemetry above, and requires cloud sync to be connected.",
+    "autoUpdateConsent": "App update checks",
+    "autoUpdateConsentHint": "When enabled, FloCafePrivateCloud checks GitHub for newer releases and downloads them (install still requires your PIN). Off by default — updates are never fetched or installed unless you turn this on.",
     "receiptPoweredByFloPOS": "Show “Powered by FloPOS” on receipts",
     "receiptPoweredByFloPOSHint": "Off by default. When enabled, the vendor “Powered by FloPOS” line is printed at the bottom of receipts.",
     "storeId": "Store ID",
@@ -2017,6 +2019,9 @@
     "chargeSaved": "{entity} tax category saved",
     "checkUpdates": "Check for updates",
     "checkUpdatesFailed": "Could not check for tax plugin updates",
+    "taxPackCatalogConsent": "Upstream tax-pack catalog",
+    "taxPackCatalogConsentHint": "When enabled, FloCafePrivateCloud contacts the upstream tax-pack catalog to list and check for official tax packs. Off by default — no catalog or update requests leave this device unless you turn this on. Installing a pack you have already downloaded stays available.",
+    "taxPackConsentSaveFailed": "Failed to save tax-pack catalog consent",
     "checking": "Checking…",
     "checksFailed": "Activation checks failed",
     "checksPassed": "{passed} of {total} activation checks passed",
@@ -2170,7 +2175,9 @@
     "betaOn": "On",
     "betaOff": "Off",
     "betaToggleFailed": "Could not change the beta channel setting.",
-    "betaGraduationNote": "Leaving the beta channel keeps your current version until the next stable release is published, protecting your database from downgrades."
+    "betaGraduationNote": "Leaving the beta channel keeps your current version until the next stable release is published, protecting your database from downgrades.",
+    "availableBadge": "Update available",
+    "downloadUpdate": "Download update"
   },
   "whatsapp": {
     "active": {

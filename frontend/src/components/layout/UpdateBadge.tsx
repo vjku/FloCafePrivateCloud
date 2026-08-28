@@ -22,18 +22,19 @@ import { useUpdateStatus } from '@/hooks/useUpdateStatus';
 import { UpdateInstallGuardDialog } from '@/components/updates/UpdateInstallGuardDialog';
 
 export default function UpdateBadge() {
-  const { updateStatus, appVersion, restartAndInstall } = useUpdateStatus();
+  const { updateStatus, appVersion, downloadUpdate, restartAndInstall } = useUpdateStatus();
   // #463: restart-to-install always goes through the PIN-guarded confirmation
   // dialog; the dropdown item only opens it and can never restart directly.
   const [guardOpen, setGuardOpen] = useState(false);
   const t = useTranslations('update');
 
   const status = updateStatus?.status;
-  if (!status || (status !== 'downloading' && status !== 'ready-to-install')) {
+  if (!status || (status !== 'downloading' && status !== 'ready-to-install' && status !== 'available')) {
     return null;
   }
 
   const isReady = status === 'ready-to-install';
+  const isAvailable = status === 'available';
 
   return (
     <DropdownMenu>
@@ -41,18 +42,24 @@ export default function UpdateBadge() {
         <Button
           variant="outline"
           size="sm"
-          className={`flex items-center gap-1.5 h-7 px-2 ${isReady ? 'text-brand border-brand/30' : 'text-gray-500 border-current/30'}`}
+          className={`flex items-center gap-1.5 h-7 px-2 ${(isReady || isAvailable) ? 'text-brand border-brand/30' : 'text-gray-500 border-current/30'}`}
         >
           {isReady ? (
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand opacity-75" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-brand" />
             </span>
+          ) : isAvailable ? (
+            <Sparkles size={12} className="text-brand" />
           ) : (
             <Download size={12} />
           )}
           <span className="text-xs font-medium">
-            {isReady ? t('readyBadge') : t('downloadingBadge', { percent: Math.round(updateStatus?.percent || 0) })}
+            {isReady
+              ? t('readyBadge')
+              : isAvailable
+                ? t('availableBadge')
+                : t('downloadingBadge', { percent: Math.round(updateStatus?.percent || 0) })}
           </span>
         </Button>
       </DropdownMenuTrigger>
@@ -82,6 +89,14 @@ export default function UpdateBadge() {
           <p className="mt-1.5 text-gray-400">{t('currentVersion', { version: appVersion })}</p>
         </div>
 
+        {isAvailable && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => void downloadUpdate()} className="text-sm cursor-pointer">
+              {t('downloadUpdate')}
+            </DropdownMenuItem>
+          </>
+        )}
         {isReady && (
           <>
             <DropdownMenuSeparator />

@@ -1370,6 +1370,9 @@ export default function SettingsPage() {
   const [diagnosticsConsent, setDiagnosticsConsent] = useState(false);
   const [savingDiagnosticsConsent, setSavingDiagnosticsConsent] = useState(false);
 
+  const [autoUpdateConsent, setAutoUpdateConsent] = useState(false);
+  const [savingAutoUpdateConsent, setSavingAutoUpdateConsent] = useState(false);
+
   const [receiptPoweredByFloPOS, setReceiptPoweredByFloPOS] = useState(false);
   const [savingReceiptPoweredByFloPOS, setSavingReceiptPoweredByFloPOS] = useState(false);
 
@@ -1618,6 +1621,12 @@ export default function SettingsPage() {
       setDiagnosticsConsent(res.data.setting?.value === 'true');
     }).catch(() => {
       setDiagnosticsConsent(false);
+    });
+
+    api.get('/settings/auto_update_consent').then((res) => {
+      setAutoUpdateConsent(res.data.setting?.value === 'true');
+    }).catch(() => {
+      setAutoUpdateConsent(false);
     });
 
     api.get('/settings/receipt_powered_by_flopos').then((res) => {
@@ -1972,6 +1981,20 @@ export default function SettingsPage() {
       toast.error(t('saveFailed'));
     } finally {
       setSavingDiagnosticsConsent(false);
+    }
+  };
+
+  const saveAutoUpdateConsent = async (enabled: boolean) => {
+    const previous = autoUpdateConsent;
+    setAutoUpdateConsent(enabled);
+    setSavingAutoUpdateConsent(true);
+    try {
+      await api.put('/settings/auto_update_consent', { value: enabled ? 'true' : 'false' });
+    } catch {
+      setAutoUpdateConsent(previous);
+      toast.error(t('saveFailed'));
+    } finally {
+      setSavingAutoUpdateConsent(false);
     }
   };
 
@@ -3762,6 +3785,19 @@ export default function SettingsPage() {
                 </label>
                   <p className="text-xs text-gray-500 mt-1">{t('storeDiagnosticsHint')}</p>
                 </div>
+                <div className="border-t border-gray-100 pt-4">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={autoUpdateConsent}
+                      disabled={savingAutoUpdateConsent}
+                      onChange={(e) => saveAutoUpdateConsent(e.target.checked)}
+                      className="rounded border-gray-300 text-brand focus:ring-brand"
+                    />
+                    <span className="text-sm text-gray-700">{t('autoUpdateConsent')}</span>
+                  </label>
+                  <p className="text-xs text-gray-500 mt-1">{t('autoUpdateConsentHint')}</p>
+                </div>
                 <div className="mt-4">
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
@@ -5201,15 +5237,20 @@ export default function SettingsPage() {
             )}
 
             {isElectron && updateStatus?.status !== 'store-managed' && updateStatus?.status !== 'linux-managed' && (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleCheckUpdates}
-                  disabled={updateStatus?.status === 'checking' || updateStatus?.status === 'available' || updateStatus?.status === 'downloading' || updateStatus?.status === 'ready-to-install'}
-                  className="px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 disabled:opacity-50 bg-brand text-white hover:opacity-90"
-                >
-                  <RefreshCw size={16} className={updateStatus?.status === 'checking' ? 'animate-spin' : ''} />
-                  {updateStatus?.status === 'checking' ? t('checking') : t('checkForUpdates')}
-                </button>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleCheckUpdates}
+                    disabled={!autoUpdateConsent || updateStatus?.status === 'checking' || updateStatus?.status === 'available' || updateStatus?.status === 'downloading' || updateStatus?.status === 'ready-to-install'}
+                    className="px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 disabled:opacity-50 bg-brand text-white hover:opacity-90"
+                  >
+                    <RefreshCw size={16} className={updateStatus?.status === 'checking' ? 'animate-spin' : ''} />
+                    {updateStatus?.status === 'checking' ? t('checking') : t('checkForUpdates')}
+                  </button>
+                </div>
+                {!autoUpdateConsent && (
+                  <p className="text-xs text-gray-500">{t('autoUpdateConsentHint')}</p>
+                )}
               </div>
             )}
           </div>

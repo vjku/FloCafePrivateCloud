@@ -52,6 +52,7 @@ export interface ElectronAPI {
   /** Change the beta channel opt-in; refused while an update is staged or in flight. */
   setBetaChannel: (enabled: boolean) => Promise<ElectronActionResult>;
   checkForUpdates: () => Promise<void>;
+  downloadUpdate: () => Promise<ElectronActionResult>;
   // #463: the main process authorizes the manager/owner PIN before quitting
   // to install; a denied request resolves with success:false instead of restarting.
   restartAndInstall: (pin?: string) => Promise<ElectronActionResult>;

@@ -307,6 +307,17 @@ export function TaxConfigurationPanel({ isOwner }: { isOwner: boolean }) {
   // wrongly disabling the option when we simply don't know yet.
   const [officialPackAvailable, setOfficialPackAvailable] = useState<boolean | null>(null);
 
+  // Governs network calls to the upstream tax-pack catalog/updates endpoints.
+  const [taxPackCatalogConsent, setTaxPackCatalogConsent] = useState(false);
+  const [savingTaxPackCatalogConsent, setSavingTaxPackCatalogConsent] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    api.get('/settings/tax_pack_catalog_consent')
+      .then((res) => { if (!cancelled) setTaxPackCatalogConsent(res.data.setting?.value === 'true'); })
+      .catch(() => { if (!cancelled) setTaxPackCatalogConsent(false); });
+    return () => { cancelled = true; };
+  }, []);
+
   const applyManualDefinition = useCallback(async (country: string) => {
     const response = await api.get(`/tax-packs/manual-${country.toLowerCase()}`);
     const definition = response.data?.active_version?.definition as ManualPackDefinition | undefined;
@@ -502,6 +513,20 @@ export function TaxConfigurationPanel({ isOwner }: { isOwner: boolean }) {
     () => new Map((detail?.categories || []).map((category) => [category.category_id, category.label])),
     [detail?.categories],
   );
+
+  const saveTaxPackCatalogConsent = async (enabled: boolean) => {
+    const previous = taxPackCatalogConsent;
+    setTaxPackCatalogConsent(enabled);
+    setSavingTaxPackCatalogConsent(true);
+    try {
+      await api.put('/settings/tax_pack_catalog_consent', { value: enabled ? 'true' : 'false' });
+    } catch {
+      setTaxPackCatalogConsent(previous);
+      toast.error(t('taxPackConsentSaveFailed'));
+    } finally {
+      setSavingTaxPackCatalogConsent(false);
+    }
+  };
 
   async function checkForPluginUpdates(announce: boolean) {
     const packId = detail?.pack.id;
@@ -932,6 +957,20 @@ export function TaxConfigurationPanel({ isOwner }: { isOwner: boolean }) {
         </div>
       </div>
 
+      <section className="rounded-xl border border-gray-200 bg-white p-5">
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={taxPackCatalogConsent}
+            disabled={savingTaxPackCatalogConsent}
+            onChange={(e) => void saveTaxPackCatalogConsent(e.target.checked)}
+            className="rounded border-gray-300 text-brand focus:ring-brand"
+          />
+          <span className="text-sm font-medium text-gray-900">{t('taxPackCatalogConsent')}</span>
+        </label>
+        <p className="mt-2 text-xs text-gray-500">{t('taxPackCatalogConsentHint')}</p>
+      </section>
+
       {!isOwner && (
         <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           <Lock size={16} className="mt-0.5 shrink-0" />
@@ -1019,7 +1058,8 @@ export function TaxConfigurationPanel({ isOwner }: { isOwner: boolean }) {
               <button
                 type="button"
                 onClick={() => void checkForPluginUpdates(true)}
-                disabled={checkingUpdate}
+                disabled={!taxPackCatalogConsent || checkingUpdate}
+                title={!taxPackCatalogConsent ? t('taxPackCatalogConsentHint') : undefined}
                 className="flex items-center gap-1 font-medium text-brand disabled:opacity-50"
               >
                 <RefreshCw size={13} className={checkingUpdate ? 'animate-spin' : ''} />

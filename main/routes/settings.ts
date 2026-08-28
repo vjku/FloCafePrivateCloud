@@ -890,6 +890,7 @@ const ALLOWED_WILDCARD_KEYS = new Set([
   'telemetry_enabled',
   'telemetry_url',
   'diagnostics_consent',
+  'auto_update_consent', 'tax_pack_catalog_consent',
   'kds_enabled', 'server_app_enabled', 'kot_printing_enabled',
   'split_checks_enabled',
   BILL_LANGUAGE_POLICY_KEY, KOT_LANGUAGE_POLICY_KEY,

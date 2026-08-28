@@ -30,6 +30,7 @@ const ALLOWED_IPC_KEYS = new Set([
   'loyalty_enabled',
   'printer_method', 'paper_size', 'bill_template', 'bill_footer_message',
   'telemetry_enabled', 'telemetry_url',
+  'auto_update_consent', 'tax_pack_catalog_consent',
 ]);
 
 const SENSITIVE_SETTING_KEYS = new Set([

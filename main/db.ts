@@ -707,6 +707,24 @@ export function isDiagnosticsConsentEnabled(): boolean {
 }
 
 /**
+ * Operator consent for application updates (auto-updater check, download, and
+ * install). Defaults to disabled (explicit opt-in) so the fork never contacts
+ * GitHub for releases unless the operator enables it.
+ */
+export function isAutoUpdateConsentEnabled(): boolean {
+  return getSettingValue('auto_update_consent') === 'true';
+}
+
+/**
+ * Operator consent for tax-pack catalog GitHub checks (release/catalog listing).
+ * Defaults to disabled (explicit opt-in). Explicit pack installs remain an
+ * owner-initiated action and are not gated by this flag.
+ */
+export function isTaxPackCatalogConsentEnabled(): boolean {
+  return getSettingValue('tax_pack_catalog_consent') === 'true';
+}
+
+/**
  * Kitchen Display System on/off switch (issue #133). Defaults to enabled
  * (missing/anything but the literal 'false') so pre-existing installs that
  * predate this setting keep their current always-on behavior.
@@ -4103,6 +4121,16 @@ export const MIGRATIONS: { version: number; name: string; up: () => void }[] = [
       db.prepare(`UPDATE settings SET value = ?, updated_at = ? WHERE key = 'anonymous_data_consent'`).run(anonConsent, now());
     },
   },
+  {
+    version: 2026082802,
+    name: 'seed_update_taxpack_consent',
+    up: () => {
+      // Both default off: the fork never contacts GitHub for releases or the
+      // tax-pack catalog unless the operator explicitly opts in.
+      insertSettingIfMissing('auto_update_consent', 'false');
+      insertSettingIfMissing('tax_pack_catalog_consent', 'false');
+    },
+  },
 ];
 
 function syncBackupBeforeMigration(fromVersion: number, toVersion: number): void {
@@ -4880,6 +4908,8 @@ function seedInstallDefaults(): void {
   insert('telemetry_enabled', 'false');
   insert('telemetry_scope', 'usage_stats,country,app_version,platform,session_duration,feature_usage,error_diagnostics');
   insert('diagnostics_consent', 'false');
+  insert('auto_update_consent', 'false');
+  insert('tax_pack_catalog_consent', 'false');
   insert('kds_enabled', 'true');
   insert('server_app_enabled', 'true');
   insert('kot_printing_enabled', 'true');

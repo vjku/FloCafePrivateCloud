@@ -52,6 +52,13 @@ export function useUpdateStatus() {
     }
   };
 
+  const downloadUpdate = () => {
+    if (typeof window !== 'undefined' && window.electronAPI) {
+      return window.electronAPI.downloadUpdate();
+    }
+    return Promise.resolve({ success: false, error: 'not-available' } satisfies ElectronActionResult);
+  };
+
   // #463: the main process authorizes the manager/owner PIN inside the
   // `restart-and-install` handler; this only forwards it and returns the
   // normalized result so the confirmation dialog can stay open on failure.
@@ -62,5 +69,5 @@ export function useUpdateStatus() {
     return Promise.resolve({ success: false, error: 'not-available' } satisfies ElectronActionResult);
   };
 
-  return { updateStatus, appVersion, isElectron, checkForUpdates, restartAndInstall };
+  return { updateStatus, appVersion, isElectron, checkForUpdates, downloadUpdate, restartAndInstall };
 }

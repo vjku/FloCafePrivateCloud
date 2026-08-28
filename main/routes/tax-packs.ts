@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { randomUUID, createHash, type KeyLike } from 'crypto';
 import Decimal from 'decimal.js';
-import { getDatabase, getSettingValue, now, upsertSettings, withTxn } from '../db';
+import { getDatabase, getSettingValue, now, upsertSettings, withTxn, isTaxPackCatalogConsentEnabled } from '../db';
 import { requireRole } from '../middleware/security';
 import { ROLE_ACCESS } from '../../shared/role-permissions';
 import { TaxEngine } from '../services/tax-engine';
@@ -875,6 +875,9 @@ router.get('/audit', requireRole(...ROLE_ACCESS.ownerManager), (req: Request, re
 });
 
 router.get('/catalog', requireRole(...ROLE_ACCESS.ownerManager), asyncHandler(async (req: Request, res: Response) => {
+  if (!isTaxPackCatalogConsentEnabled()) {
+    return res.status(403).json({ error: 'tax_pack_catalog_consent_required' });
+  }
   try {
     const remote = await fetchRemoteTaxPackCatalog(fetch, getHttpRequestSignal(req));
     const installedRows = getDatabase().prepare(
@@ -894,6 +897,9 @@ router.get('/catalog', requireRole(...ROLE_ACCESS.ownerManager), asyncHandler(as
 }));
 
 router.get('/updates', requireRole(...ROLE_ACCESS.ownerManager), asyncHandler(async (req: Request, res: Response) => {
+  if (!isTaxPackCatalogConsentEnabled()) {
+    return res.status(403).json({ error: 'tax_pack_catalog_consent_required' });
+  }
   try {
     const remote = await fetchRemoteTaxPackCatalog(fetch, getHttpRequestSignal(req));
     const installedRows = getDatabase().prepare(`

@@ -58,6 +58,7 @@ export type ElectronApiMethodPresence = Pick<
   | 'onUpdateStatus'
   | 'getUpdateStatus'
   | 'checkForUpdates'
+  | 'downloadUpdate'
   | 'restartAndInstall'
   | 'platform'
 >;

@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 import { Bonjour } from 'bonjour-service';
-import { getDatabase, initDatabase, closeDatabase, waitForDatabaseRequests, beginDatabaseShutdown, SchemaVersionMismatchError, now, withDatabaseRequest } from './db';
+import { getDatabase, initDatabase, closeDatabase, waitForDatabaseRequests, beginDatabaseShutdown, SchemaVersionMismatchError, now, withDatabaseRequest, isAutoUpdateConsentEnabled, isTaxPackCatalogConsentEnabled } from './db';
 import { BETA_CHANNEL_SETTING_KEY, parseStoredBetaChannelEnabled, resolveUpdateChannel } from './update-channel';
 import { computeTaxPackUpdates, fetchRemoteTaxPackCatalog } from './tax-packs/catalog';
 import { startServer, stopServer, getLocalIP, isServerRunning, getServerPort } from './server';
@@ -169,10 +169,11 @@ function setUpdateStatus(next: StoredUpdateStatus): void {
 function setupAutoUpdater(): void {
   autoUpdater.logger = log;
   configureAutoUpdaterChannel();
-  // Downloading is harmless and lets the user see a ready-to-install build,
-  // but installation must always be an explicit action. A POS may be closed
+  // Fork opt-in: downloads are never automatic. The operator must explicitly
+  // consent (auto_update_consent) and then click "Download" in the UI; only
+  // installation remains an explicit, PIN-gated action. A POS may be closed
   // while a payment, printer job, or end-of-day workflow is still in flight.
-  autoUpdater.autoDownload = true;
+  autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = false;
 
   autoUpdater.on('checking-for-update', () => {
@@ -182,9 +183,9 @@ function setupAutoUpdater(): void {
   });
 
   autoUpdater.on('update-available', (info) => {
-    // autoDownload is true, so electron-updater starts downloading right after
-    // this fires on its own — no dialog, no manual download-update call needed.
-    console.log('[Update] Update available, downloading silently:', info.version);
+    // autoDownload is false, so electron-updater waits for an explicit
+    // downloadUpdate() call from the UI (gated by operator consent).
+    console.log('[Update] Update available, awaiting operator download:', info.version);
     updaterPhase = 'download';
     setUpdateStatus({
       status: 'available',
@@ -251,6 +252,13 @@ function checkForUpdates(): void {
 
   if (isUpdateCheckInFlight(storedUpdateStatus, updaterPhase)) {
     log.info('[Update] Ignoring check while another update operation is in progress');
+    return;
+  }
+
+  // Fork opt-in: the operator must explicitly consent before any GitHub release
+  // check. Without consent, never contact the update feed.
+  if (!isAutoUpdateConsentEnabled()) {
+    log.info('[Update] Auto-update consent disabled — skipping update check');
     return;
   }
 
@@ -919,6 +927,14 @@ async function initialize(): Promise<void> {
       checkForUpdates();
     });
 
+    ipcMain.handle('download-update', () => {
+      if (!isAutoUpdateConsentEnabled()) {
+        return { success: false, error: 'Auto-update consent is disabled' };
+      }
+      autoUpdater.downloadUpdate().catch((err) => log.error('[Update] Download failed:', err));
+      return { success: true };
+    });
+
     ipcMain.handle('updates:get-beta-channel', () =>
       // Persisted preference only — whether beta releases are *offered* is
       // decided by resolveUpdateChannel at check time, so this stays honest
@@ -1005,7 +1021,7 @@ async function initialize(): Promise<void> {
     // (#58) — checkForUpdates() itself decides whether Linux's build format
     // (AppImage vs deb/rpm/snap) actually supports self-update.
     if (!isStoreBuild) {
-      if (process.env.FLO_E2E_SKIP_OPTIONAL_NETWORK !== '1') {
+      if (process.env.FLO_E2E_SKIP_OPTIONAL_NETWORK !== '1' && isAutoUpdateConsentEnabled()) {
         setupAutoUpdater();
         setTimeout(() => checkForUpdates(), 5000);
       }
@@ -1015,7 +1031,7 @@ async function initialize(): Promise<void> {
       // first load instead of a stale never-checked default (#467).
       setUpdateStatus(oneShotUpdateState('store-managed'));
     }
-    if (process.env.FLO_E2E_SKIP_OPTIONAL_NETWORK !== '1') {
+    if (process.env.FLO_E2E_SKIP_OPTIONAL_NETWORK !== '1' && isTaxPackCatalogConsentEnabled()) {
       setTimeout(() => { void checkTaxPackUpdatesOnStartup(); }, 5000);
     }
 

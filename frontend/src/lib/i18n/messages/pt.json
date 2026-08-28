@@ -1280,6 +1280,8 @@
     "businessWebsite": "Site do negócio",
     "businessWebsitePlaceholder": "https://seucafe.com",
     "businessWebsiteHint": "Impresso no cabeçalho do recibo, se definido",
+    "autoUpdateConsent": "Verificação de atualizações do app",
+    "autoUpdateConsentHint": "Quando ativado, o FloCafePrivateCloud consulta o GitHub para procurar versões mais recentes e as baixa (a instalação ainda exige seu PIN). Desativado por padrão — nenhuma atualização é obtida ou instalada a menos que você ative isso.",
     "receiptPoweredByFloPOS": "Mostrar “Powered by FloPOS” nos recibos",
     "receiptPoweredByFloPOSHint": "Desativado por padrao. Quando ativado, a linha do fornecedor “Powered by FloPOS” e impressa no rodape dos recibos.",
     "installedOnThisComputer": "Instalado neste computador",
@@ -2017,6 +2019,9 @@
     "chargeSaved": "Categoria de imposto de {entity} salva",
     "checkUpdates": "Verificar atualizações",
     "checkUpdatesFailed": "Não foi possível verificar atualizações do plugin de impostos",
+    "taxPackCatalogConsent": "Catálogo de pacotes de impostos do fornecedor",
+    "taxPackCatalogConsentHint": "Quando ativado, o FloCafePrivateCloud contata o catálogo de pacotes de impostos do fornecedor para listar e verificar pacotes oficiais. Desativado por padrão — nenhuma solicitação de catálogo ou atualização sai deste dispositivo a menos que você ative isso. Instalar um pacote que você já baixou continua disponível.",
+    "taxPackConsentSaveFailed": "Falha ao salvar o consentimento do catálogo de impostos",
     "checking": "Verificando…",
     "checksFailed": "As verificações de ativação falharam",
     "checksPassed": "{passed} de {total} verificações de ativação aprovadas",
@@ -2170,7 +2175,9 @@
     "betaOn": "Ativado",
     "betaOff": "Desativado",
     "betaToggleFailed": "Não foi possível alterar a configuração do canal beta.",
-    "betaGraduationNote": "Sair do canal beta mantém a sua versão atual até que a próxima versão estável seja publicada, protegendo a sua base de dados de desatualizações."
+    "betaGraduationNote": "Sair do canal beta mantém a sua versão atual até que a próxima versão estável seja publicada, protegendo a sua base de dados de desatualizações.",
+    "availableBadge": "Atualização disponível",
+    "downloadUpdate": "Baixar atualização"
   },
   "whatsapp": {
     "active": {
