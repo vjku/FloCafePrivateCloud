@@ -1,0 +1,48 @@
+name: Sync Upstream
+
+on:
+  schedule:
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream and fetch
+        run: |
+          git remote add upstream https://github.com/FreeOpenSourcePOS/FloCafe.git || git remote set-url upstream https://github.com/FreeOpenSourcePOS/FloCafe.git
+          git fetch upstream --tags
+          git fetch origin --tags
+
+      - name: Compute egress scope of upstream changes
+        id: egress
+        run: |
+          MERGE_BASE=$(git merge-base origin/main upstream/main)
+          node scripts/check-upstream-egress.cjs "$MERGE_BASE" upstream/main --strict-files
+
+      - name: Merge upstream if clean
+        if: success()
+        run: |
+          git merge upstream/main --no-edit -X ours
+          git push origin main
+
+      - name: Alert on egress (no auto-merge)
+        if: failure()
+        run: |
+          echo "::error::Upstream changes introduce new network egress. Sync was blocked to protect the opt-in egress guarantee. Review upstream commits, add consent gates in this fork, then re-run the sync workflow."
+          exit 1

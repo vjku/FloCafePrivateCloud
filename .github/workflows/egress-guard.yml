@@ -1,0 +1,30 @@
+name: Egress Guard
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  egress:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for new network egress
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+            HEAD="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+            HEAD="${{ github.event.sha }}"
+          fi
+          node scripts/check-upstream-egress.cjs "$BASE" "$HEAD" --self-pr || echo "::warning::Egress warnings above — confirm any new network call is behind an explicit consent gate (auto_update_consent / tax_pack_catalog_consent) before merging."
