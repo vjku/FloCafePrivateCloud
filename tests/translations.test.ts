@@ -384,6 +384,7 @@ const FA_INTENTIONAL_IDENTICAL: ReadonlySet<string> = new Set([
   'setup.cloudServerUrlPlaceholder', // example URL
   'settings.cloudServerUrlPlaceholder', // example URL
   'settings.apiKeyInputPlaceholder', // example API key
+  'settings.businessWebsitePlaceholder', // example business website URL (canonical, not localized)
   'settings.connectionUsb', // technical acronym
   'settings.instagramPlaceholder', // example handle
   'settings.ipAddressPlaceholder', // example IP

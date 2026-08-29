@@ -23,18 +23,32 @@ import * as path from 'path';
 const OUT = path.join(__dirname, '..', 'frontend', 'out');
 const MESSAGES_DIR = path.join(__dirname, '..', 'frontend', 'src', 'lib', 'i18n', 'messages');
 
-function getLocaleMarkers(): Record<string, string> {
+function extractUrls(value: string): string[] {
+  return value.match(/https?:\/\/[^\s"'`)]+/g) ?? [];
+}
+
+function getLocaleData(): {
+  markers: Record<string, string>;
+  urls: Record<string, Set<string>>;
+} {
   const markers: Record<string, string> = {};
+  const urls: Record<string, Set<string>> = {};
   for (const entry of fs.readdirSync(MESSAGES_DIR)) {
     if (!entry.endsWith('.json')) continue;
     const lang = path.basename(entry, '.json');
-    const content = JSON.parse(fs.readFileSync(path.join(MESSAGES_DIR, entry), 'utf8'));
+    const raw = fs.readFileSync(path.join(MESSAGES_DIR, entry), 'utf8');
+    const content = JSON.parse(raw);
     // Distinctive leaf value from messages (pos.cartEmpty)
     const marker = content?.pos?.cartEmpty;
     assert(Boolean(marker), `Message file ${entry} must contain pos.cartEmpty marker`);
     markers[lang] = marker;
+    // Reference URLs embedded in user-facing help/placeholder copy (e.g.
+    // example.com / flopos.com endpoints) are packaged, static message data —
+    // not runtime egress. The offline invariant must not flag them as external
+    // network references; only URLs absent from the message source count.
+    urls[lang] = new Set(extractUrls(raw));
   }
-  return markers;
+  return { markers, urls };
 }
 
 function assert(condition: boolean, msg: string): void {
@@ -67,7 +81,7 @@ function run(): void {
     return;
   }
 
-  const MARKERS = getLocaleMarkers();
+  const { markers: MARKERS, urls: LOCALE_URLS } = getLocaleData();
   const nonEnglishLangs = Object.keys(MARKERS).filter((l) => l !== 'en');
 
   const chunks = walkFiles(chunksDir, (name) => name.endsWith('.js'));
@@ -115,13 +129,19 @@ function run(): void {
     `lazy locale chunks must not be eagerly loaded by any page: ${JSON.stringify(eagerRefs.slice(0, 5))}`,
   );
 
-  // 2. Offline invariant: locale chunks are pure packaged assets.
+  // 2. Offline invariant: locale chunks are pure packaged assets. Reference
+  // URLs shipped inside the message strings (intentional operator-facing help
+  // copy) are exempt; any external URL NOT present in the message source would
+  // be a real runtime egress/remote dependency and must still fail.
   for (const lang of nonEnglishLangs) {
     const file = chunks.find((f) => path.basename(f) === lazyByLang[lang]);
     const content = fs.readFileSync(file as string, 'utf8');
+    const external = extractUrls(content).filter((u) => !LOCALE_URLS[lang].has(u));
     assert(
-      !/https?:\/\//.test(content),
-      `${lang} locale chunk must contain no external network references`,
+      external.length === 0,
+      `${lang} locale chunk must contain no external network references beyond packaged message strings${
+        external.length ? `: ${external.slice(0, 5).join(', ')}` : ''
+      }`,
     );
   }
 

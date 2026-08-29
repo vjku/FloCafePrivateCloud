@@ -1278,7 +1278,7 @@
     "instagramHint": "اگر تنظیم شده باشد، روی صورت‌حساب‌های چاپی نشان داده می‌شود",
     "instagramPlaceholder": "@yourcafe",
     "businessWebsite": "وب‌سایت کسب‌وکار",
-    "businessWebsitePlaceholder": "https://cafe-shoma.com",
+    "businessWebsitePlaceholder": "https://example.net",
     "businessWebsiteHint": "در صورت تنظیم، در سربرگ رسید چاپ می‌شود",
     "autoUpdateConsent": "بررسی به‌روزرسانی برنامه",
     "autoUpdateConsentHint": "هنگام فعال بودن، FloCafePrivateCloud برای یافتن نسخه‌های جدید و دانلود آن‌ها GitHub را بررسی می‌کند (نصب همچنان به PIN شما نیاز دارد). به‌طور پیش‌فرض غیرفعال است — هیچ به‌روزرسانی دریافت یا نصب نمی‌شود مگر اینکه آن را روشن کنید.",

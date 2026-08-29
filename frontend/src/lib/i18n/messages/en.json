@@ -1278,7 +1278,7 @@
     "instagramHint": "Shown on printed bills, if set",
     "instagramPlaceholder": "@yourcafe",
     "businessWebsite": "Business Website",
-    "businessWebsitePlaceholder": "https://yourcafe.com",
+    "businessWebsitePlaceholder": "https://example.net",
     "businessWebsiteHint": "Printed on the receipt header, if set",
     "installedOnThisComputer": "Installed on this computer",
     "invalidExportFile": "Invalid FloCafe export file",
