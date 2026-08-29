@@ -192,7 +192,7 @@ async function run() {
     clearSettings('country_confirmed_at', 'onboarding_completed');
     // Suppresses the post-registration welcome email so this test exercises the
     // register call and nothing else.
-    setSettings({ country: 'IN', cloud_sync_enabled: '1', cloud_verification_welcome_requested: '1' });
+    setSettings({ country: 'IN', cloud_server_url: 'https://cloud.example.com', cloud_sync_enabled: '1', cloud_verification_welcome_requested: '1' });
     await cloudSync.register();
     assertEqual(body?.business?.country, null, 'an unconfirmed install registers without a country');
     assertEqual(body?.business?.country_source, 'default', 'the payload says the value is a default');

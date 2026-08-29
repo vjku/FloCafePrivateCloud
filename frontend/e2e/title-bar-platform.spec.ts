@@ -187,6 +187,7 @@ test('browser Electron fixture exposes the complete renderer API and explicit in
     'dbApplySafeFixes',
     'dbHealthCheck',
     'dbInitialize',
+    'downloadUpdate',
     'getAppInfo',
     'getBetaChannel',
     'getDailySummary',
