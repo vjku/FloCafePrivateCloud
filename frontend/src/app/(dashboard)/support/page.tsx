@@ -159,7 +159,7 @@ export default function SupportPage() {
             <CardContent className="space-y-4">
               <div className="rounded-lg bg-muted/60 p-3 text-sm"><span className="text-muted-foreground">{t('restaurant')}</span><p className="font-medium">{profile.restaurant_name || '—'}</p></div>
               <div className="space-y-2"><Label htmlFor="support-name">{t('contactName')}</Label><Input id="support-name" value={profile.contact_name} onChange={(e) => setProfile({ ...profile, contact_name: e.target.value })} maxLength={255} /></div>
-              <div className="space-y-2"><Label htmlFor="support-email">{t('email')}</Label><Input id="support-email" type="email" value={profile.contact_email} onChange={(e) => setProfile({ ...profile, contact_email: e.target.value })} maxLength={255} /></div>
+              <div className="space-y-2"><Label htmlFor="support-email">{t('email')}</Label><Input id="support-email" type="email" value={profile.contact_email} onChange={(e) => setProfile({ ...profile, contact_email: e.target.value })} maxLength={255} /><p className="text-xs text-muted-foreground">{t('contactEmailSupportHint')}</p></div>
               <div className="space-y-2"><Label htmlFor="support-phone">{t('phone')}</Label><Input id="support-phone" type="tel" value={profile.contact_phone} onChange={(e) => setProfile({ ...profile, contact_phone: e.target.value })} maxLength={50} /></div>
             </CardContent>
           </Card>

@@ -616,6 +616,7 @@ router.put('/cloud', requireRole(...ROLE_ACCESS.ownerManager), (req: Request, re
       cloud_orders_enabled,
       cloud_reports_enabled,
       cloud_command_polling_enabled,
+      email_share_cloud,
     } = req.body;
     const db = getDatabase();
     const updates: Record<string, string | undefined> = {
@@ -624,6 +625,7 @@ router.put('/cloud', requireRole(...ROLE_ACCESS.ownerManager), (req: Request, re
       cloud_orders_enabled: bool01Flag(cloud_orders_enabled),
       cloud_reports_enabled: bool01Flag(cloud_reports_enabled),
       cloud_command_polling_enabled: bool01Flag(cloud_command_polling_enabled),
+      email_share_cloud: bool01Flag(email_share_cloud),
     };
 
     let normalizedServerUrl: string | undefined;

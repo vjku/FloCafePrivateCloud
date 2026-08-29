@@ -1293,6 +1293,7 @@ export default function SettingsPage() {
     cloud_store_id: '',
     cloud_sync_enabled: false,
     cloud_orders_enabled: false,
+    email_share_cloud: false,
     cloud_last_sync: null as string | null,
   });
   const [savedCloudSettings, setSavedCloudSettings] = useState(cloudSettings);
@@ -1312,6 +1313,7 @@ export default function SettingsPage() {
   const [cloudServerUrl, setCloudServerUrl] = useState('');
   const [savingCloudSync, setSavingCloudSync] = useState(false);
   const [savingCloudServerUrl, setSavingCloudServerUrl] = useState(false);
+  const [savingCloudShareEmail, setSavingCloudShareEmail] = useState(false);
 
   const cloudServicesStopped = cloudStatus.cloud_services_disabled_by_user;
   const cloudDeletionFinal = cloudStatus.cloud_registration_status === 'deleted' || ['approved', 'completed', 'deleted'].includes(cloudStatus.cloud_deletion_status);
@@ -1333,12 +1335,14 @@ export default function SettingsPage() {
         ...previous,
         cloud_sync_enabled: !!data.cloud_sync_enabled,
         cloud_orders_enabled: !!data.cloud_orders_enabled,
+        email_share_cloud: !!data.email_share_cloud,
         cloud_last_sync: data.cloud_last_sync || null,
       }));
       setSavedCloudSettings((previous) => ({
         ...previous,
         cloud_sync_enabled: !!data.cloud_sync_enabled,
         cloud_orders_enabled: !!data.cloud_orders_enabled,
+        email_share_cloud: !!data.email_share_cloud,
         cloud_last_sync: data.cloud_last_sync || null,
       }));
       setCloudServerUrl(data.cloud_server_url || '');
@@ -1785,6 +1789,7 @@ export default function SettingsPage() {
         cloud_store_id: res.data.cloud_store_id || '',
         cloud_sync_enabled: !!res.data.cloud_sync_enabled,
         cloud_orders_enabled: !!res.data.cloud_orders_enabled,
+        email_share_cloud: !!res.data.email_share_cloud,
         cloud_last_sync: res.data.cloud_last_sync || null,
       };
       setCloudSettings(settings);
@@ -2053,6 +2058,23 @@ export default function SettingsPage() {
       toast.error(t('saveFailed'));
     } finally {
       setSavingCloudServerUrl(false);
+    }
+  };
+
+  const saveCloudShareEmail = async (enabled: boolean) => {
+    const previous = cloudSettings.email_share_cloud;
+    setCloudSettings((prev) => ({ ...prev, email_share_cloud: enabled }));
+    setSavingCloudShareEmail(true);
+    try {
+      const res = await api.put('/settings/cloud', { email_share_cloud: enabled });
+      setCloudSettings((prev) => ({ ...prev, ...res.data }));
+      setSavedCloudSettings((prev) => ({ ...prev, ...res.data }));
+      toast.success(t('saved'));
+    } catch {
+      setCloudSettings((prev) => ({ ...prev, email_share_cloud: previous }));
+      toast.error(t('saveFailed'));
+    } finally {
+      setSavingCloudShareEmail(false);
     }
   };
 
@@ -3770,6 +3792,18 @@ export default function SettingsPage() {
                   />
                   <p className="text-xs text-gray-500 mt-1">{t('cloudServerUrlHint')}</p>
                 </div>
+
+                <label className="flex items-center gap-3 cursor-pointer pt-3">
+                  <input
+                    type="checkbox"
+                    checked={cloudSettings.email_share_cloud}
+                    disabled={savingCloudShareEmail || !(cloudSettings.cloud_sync_enabled && cloudServerUrl.trim() !== '')}
+                    onChange={(e) => saveCloudShareEmail(e.target.checked)}
+                    className="rounded border-gray-300 text-brand focus:ring-brand disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                  <span className="text-sm text-gray-700">{t('cloudShareEmail')}</span>
+                </label>
+                <p className="text-xs text-gray-500 mt-1">{t('cloudShareEmailDescription')}</p>
               </div>
 
               <div className="border-t border-gray-100 pt-4">

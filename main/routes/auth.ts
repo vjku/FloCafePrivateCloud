@@ -771,6 +771,7 @@ router.post('/setup/initialize', (req: Request, res: Response) => {
       telemetry_url,
       email_product_updates,
       email_marketing,
+      email_share_cloud,
     } = req.body;
     const email = normalizeEmail(req.body.email);
     const displayName = String(name || '').trim();
@@ -918,6 +919,7 @@ router.post('/setup/initialize', (req: Request, res: Response) => {
         cloud_server_url: normalizedCloudServerUrl || '',
         email_product_updates: email_product_updates === true ? 'true' : 'false',
         email_marketing: email_marketing === true ? 'true' : 'false',
+        email_share_cloud: email_share_cloud === true ? '1' : '0',
         cloud_services_disabled_by_user: 'false',
       });
 

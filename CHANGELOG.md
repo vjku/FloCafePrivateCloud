@@ -8,11 +8,15 @@ All notable changes to Flo Cafe are documented here. Dates are release dates, no
 - **Settings → Privacy:** Added an "App update checks" toggle (`auto_update_consent`). FloCafePrivateCloud never contacts GitHub for releases unless you explicitly enable it; when on, you choose Download and installation still requires your PIN.
 - **Settings → Tax Configuration:** Added an "Upstream tax-pack catalog" toggle (`tax_pack_catalog_consent`) that gates catalog and update checks against the upstream tax-pack repository. Off by default — no catalog or update requests leave the device unless you turn it on; installing a pack you have already downloaded stays available.
 - Added a daily upstream-sync workflow (`.github/workflows/sync-upstream.yml`) that fetches upstream FloCafe, plus an egress-guard workflow (`.github/workflows/egress-guard.yml`) and `scripts/check-upstream-egress.cjs` that block any PR introducing new network egress without an explicit consent gate.
+- **Setup & Settings → Cloud:** Added an explicit "Share my owner email with this cloud server" opt-in (`email_share_cloud`), unchecked by default, in both first-run setup and Cloud settings. The owner email is never sent to a cloud server unless enabled.
+- **Support:** Added a note that the contact email is used only to communicate about the submitted ticket.
 
 ### Changed
 - The auto-updater feed now points at the `vjku/FloCafePrivateCloud` repository instead of upstream; silent auto-download is disabled (`autoDownload = false`), so updates are never fetched without an explicit Download action.
 - `GET /tax-packs/catalog` and `GET /tax-packs/updates` now return `403` with `tax_pack_catalog_consent_required` unless the catalog consent is enabled.
 - README is now the FloCafePrivateCloud fork readme: it identifies the fork, its objectives, the upstream relationship, and the intent to upstream changes via pull requests after a settling period.
+- `CloudSync.register()` no longer transmits `business.email` and no longer requests the welcome/verification email unless `email_share_cloud` is opted in.
+- Rewrote email-communication setup strings: the owner email is optional, used for login/local recovery, and never shared or used for communication without explicit consent; security and service notices are shown in-app.
 
 ### Fixed
 - (none)

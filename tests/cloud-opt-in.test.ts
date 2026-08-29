@@ -86,6 +86,46 @@ async function run() {
     assert(registerThrew, 'register() throws when cloud_server_url is empty');
     assertEqual(upstreamCalls, 0, 'register() makes no outbound request without a server URL');
 
+    // register() must not transmit business.email unless email_share_cloud is opted in.
+    {
+      let registerBody: any = null;
+      const successFetch = (async (url: string | URL | Request, init?: RequestInit) => {
+        if (String(url).includes('/api/pos/register')) {
+          registerBody = JSON.parse(String(init?.body || '{}'));
+        }
+        return new Response(
+          JSON.stringify({ api_key: 'fac_live_test', store_id: '1', pos_id: 'pos_1' }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      }) as typeof fetch;
+      const prevFetch = globalThis.fetch;
+      globalThis.fetch = successFetch;
+      try {
+        // Default: email_share_cloud absent/0 → email must NOT be transmitted.
+        setSettings({
+          cloud_server_url: 'https://cloud.example.test',
+          cloud_sync_enabled: '1',
+          email_share_cloud: '0',
+          email: 'owner@example.com',
+          cloud_verification_welcome_requested: '1',
+        });
+        cloudSync.reload();
+        await cloudSync.register();
+        assertEqual(registerBody?.business?.email, '', 'register() omits business.email when email_share_cloud is not opted in');
+
+        // Opted in: email IS transmitted.
+        registerBody = null;
+        setSettings({ email_share_cloud: '1' });
+        cloudSync.reload();
+        await cloudSync.register();
+        assertEqual(registerBody?.business?.email, 'owner@example.com', 'register() sends business.email when email_share_cloud is opted in');
+      } finally {
+        globalThis.fetch = prevFetch;
+        setSettings({ cloud_server_url: '', cloud_sync_enabled: '0', email_share_cloud: '0', cloud_registration_status: 'unregistered' });
+        cloudSync.reload();
+      }
+    }
+
     // Enabling cloud sync without a server URL is rejected by the settings route.
     const enableNoUrl = await request(app)
       .put('/api/settings/cloud')

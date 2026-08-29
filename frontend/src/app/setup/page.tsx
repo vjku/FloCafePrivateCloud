@@ -100,6 +100,7 @@ export default function SetupPage() {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [productUpdates, setProductUpdates] = useState(false);
   const [marketing, setMarketing] = useState(false);
+  const [shareEmailCloud, setShareEmailCloud] = useState(false);
   const passwordsEntered = form.password.length > 0 && form.confirmPassword.length > 0;
   const passwordsMatch = !passwordsEntered || form.password === form.confirmPassword;
   const ownerEmail = form.email.trim().toLowerCase();
@@ -258,6 +259,7 @@ export default function SetupPage() {
         telemetry_url: telemetryUrl.trim(),
         email_product_updates: productUpdates,
         email_marketing: marketing,
+        email_share_cloud: shareEmailCloud,
         ...countryPayload,
       });
       completeSetup();
@@ -655,6 +657,11 @@ export default function SetupPage() {
                       <input type="checkbox" checked={marketing} onChange={(e) => setMarketing(e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-gray-300" />
                       <span>{t('marketingOptional')}</span>
                     </label>
+                    <label className="flex items-start gap-2">
+                      <input type="checkbox" checked={shareEmailCloud} onChange={(e) => setShareEmailCloud(e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-gray-300" />
+                      <span>{t('cloudShareEmail')}</span>
+                    </label>
+                    <p className="text-xs text-muted-foreground">{t('cloudShareEmailDescription')}</p>
                   </div>
 
 

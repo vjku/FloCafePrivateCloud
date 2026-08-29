@@ -440,6 +440,7 @@ export class CloudSyncService {
       cloud_pos_hash: refreshed.cloud_pos_hash || null,
       cloud_pos_id: refreshed.cloud_pos_id || null,
       cloud_sync_enabled: refreshed.cloud_sync_enabled === '1',
+      email_share_cloud: refreshed.email_share_cloud === '1',
       cloud_orders_enabled: refreshed.cloud_orders_enabled === '1',
       cloud_reports_enabled: refreshed.cloud_reports_enabled === '1',
       cloud_command_polling_enabled: refreshed.cloud_command_polling_enabled === '1',
@@ -504,7 +505,7 @@ export class CloudSyncService {
       business: {
         name: settings.business_name || '',
         contact_name: owner?.name || '',
-        email: settings.email || '',
+        email: settings.email_share_cloud === '1' ? (settings.email || '') : '',
         phone: settings.business_phone || settings.phone || '',
         country: provenance.country,
         country_source: provenance.countrySource,
@@ -552,7 +553,7 @@ export class CloudSyncService {
       throwIfRequestAborted(signal);
       if (this.shutdownRequested) throw new Error('Cloud shutdown in progress');
       this.reload();
-      if (settings.cloud_verification_welcome_requested !== '1') {
+      if (settings.email_share_cloud === '1' && settings.cloud_verification_welcome_requested !== '1') {
         try {
           await this.requestEmailVerification({
             product_updates: settings.email_product_updates === 'true',
