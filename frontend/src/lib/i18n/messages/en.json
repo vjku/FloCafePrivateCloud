@@ -1707,7 +1707,7 @@
     "cloudOptInTitle": "Cloud sync",
     "cloudOptInHint": "When enabled, FloCafe sends store metadata, sales summaries, and order events to the cloud server URL you enter. Leave it empty for fully offline operation. Enabling requires a server URL.",
     "cloudServerUrlPlaceholder": "https://cloud.example.com",
-    "cloudServerUrlHint": "Enter the URL of your self-hosted FloCafe cloud (or the hosted Flo cloud). Data is only sent to this URL. Leave empty to disable cloud sync.",
+    "cloudServerUrlHint": "Enter the URL of your self-hosted FloCafe cloud (or the hosted Flo cloud https://blue.flopos.com). Data is only sent to this URL. Leave empty to disable cloud sync.",
     "cloudEnableNeedsUrl": "Enter a cloud server URL above before you can enable cloud sync.",
     "cloudShareEmail": "Share my owner email with this cloud server",
     "cloudShareEmailDescription": "Allow this cloud server to store and use your owner email for account and recovery communication. Unchecked by default. Your email is never shared without this consent.",

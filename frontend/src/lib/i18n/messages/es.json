@@ -1707,7 +1707,7 @@
     "cloudOptInTitle": "Sincronización en la nube",
     "cloudOptInHint": "Cuando está activada, FloCafe envía metadatos de la tienda, resúmenes de ventas y eventos de pedidos a la URL del servidor en la nube que ingreses. Dejala vacía para funcionar totalmente sin conexión. Para activarla se requiere una URL de servidor.",
     "cloudServerUrlPlaceholder": "https://cloud.example.com",
-    "cloudServerUrlHint": "Ingresá la URL de tu nube FloCafe autoalojada (o la nube alojada de Flo). Los datos solo se envían a esta URL. Dejala vacía para desactivar la sincronización en la nube.",
+    "cloudServerUrlHint": "Ingresá la URL de tu nube FloCafe autoalojada (o la nube alojada de Flo https://blue.flopos.com). Los datos solo se envían a esta URL. Dejala vacía para desactivar la sincronización en la nube.",
     "cloudEnableNeedsUrl": "Ingresá una URL de servidor en la nube arriba antes de poder activar la sincronización en la nube.",
     "cloudShareEmail": "Compartir mi correo de dueño con este servidor en la nube",
     "cloudShareEmailDescription": "Permití que este servidor en la nube guarde y use tu correo de dueño para comunicación de cuenta y recuperación. Desactivado por defecto. Tu correo nunca se comparte sin este consentimiento.",
