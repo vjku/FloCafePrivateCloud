@@ -93,6 +93,7 @@ FloCafe includes UI translations for:
 
 - English
 - Spanish
+- French
 - Brazilian Portuguese
 - Persian (Farsi), including RTL support
 
