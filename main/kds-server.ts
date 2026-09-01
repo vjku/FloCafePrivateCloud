@@ -303,16 +303,16 @@ export function startKdsServer(): Promise<void> {
               AND active_oi.status NOT IN ('served', 'cancelled')
             WHERE active_o.status NOT IN ('pending', 'preparing', 'ready', 'served', 'cancelled')
           )
-          AND oi.status NOT IN ('completed', 'cancelled', 'void_adjustment')
+          AND oi.status NOT IN ('completed', 'cancelled', 'void_adjustment', 'refunded')
           AND (oi.status != 'voided' OR oi.voided_at IS NULL OR oi.voided_at > ?)
         `;
         const orderParams: string[] = [voidedCutoff];
         if (stationIds.length > 0) {
           const stationPlaceholders = stationIds.map(() => '?').join(',');
           const categoryRoute = stationRoutingCategoryIds.length > 0
-            ? ` OR EXISTS (SELECT 1 FROM order_items routed_oi JOIN products routed_p ON routed_p.id = routed_oi.product_id WHERE routed_oi.order_id = o.id AND o.table_id IS NULL AND routed_p.category_id IN (${stationRoutingCategoryIds.map(() => '?').join(',')}))`
+            ? ` OR EXISTS (SELECT 1 FROM order_items routed_oi JOIN products routed_p ON routed_p.id = routed_oi.product_id WHERE routed_oi.order_id = o.id AND t.kitchen_station_id IS NULL AND routed_p.category_id IN (${stationRoutingCategoryIds.map(() => '?').join(',')}))`
             : '';
-          query += ` AND (EXISTS (SELECT 1 FROM tables assigned_table WHERE assigned_table.id = o.table_id AND assigned_table.kitchen_station_id IN (${stationPlaceholders}))${categoryRoute}${stationScope.hasUnrestrictedStation ? ' OR o.table_id IS NULL' : ''})`;
+          query += ` AND (EXISTS (SELECT 1 FROM tables assigned_table WHERE assigned_table.id = o.table_id AND assigned_table.kitchen_station_id IN (${stationPlaceholders}))${categoryRoute}${stationScope.hasUnrestrictedStation ? ' OR t.kitchen_station_id IS NULL' : ''})`;
           orderParams.push(...stationIds, ...stationRoutingCategoryIds);
         }
         query += ' ORDER BY o.created_at ASC';
@@ -348,7 +348,7 @@ export function startKdsServer(): Promise<void> {
         // #150: hide the void reversal line (bill adjustment, not a kitchen
         // item) and age voided items off the board after their grace period.
         const isVisibleItem = (item: any, order: any) => item.status !== 'void_adjustment'
-          && !['completed', 'cancelled'].includes(item.status)
+          && !['completed', 'cancelled', 'refunded'].includes(item.status)
           && (item.status !== 'voided' || isVoidedItemKdsVisible(item.voided_at))
           && isKdsStationItemAllowed(stationIds, stationRoutingCategoryIds, order.kitchen_station_id, item.category_id, order.kitchen_station_id ? stationScope?.categoryIdsByStation[String(order.kitchen_station_id)] : undefined, stationScope.hasUnrestrictedStation);
 
@@ -435,7 +435,7 @@ export function startKdsServer(): Promise<void> {
           // #150: locked once voided — see main/routes/order-items.ts for the same rule.
           if (item.status === 'voided') return { statusCode: 400, error: 'This item has been voided and can no longer be updated' };
           if (item.status === 'void_adjustment') return { statusCode: 400, error: 'This bill adjustment cannot be updated from KDS' };
-          if (item.status === 'completed' || item.status === 'cancelled') {
+          if (item.status === 'completed' || item.status === 'cancelled' || item.status === 'refunded') {
             return { statusCode: 400, error: 'This terminal item cannot be updated from KDS' };
           }
 
@@ -460,7 +460,7 @@ export function startKdsServer(): Promise<void> {
             ? db.prepare(`
                 UPDATE order_items
                 SET status = ?, updated_at = datetime('now')
-                WHERE id = ? AND status NOT IN ('voided', 'void_adjustment', 'completed', 'cancelled')
+                WHERE id = ? AND status NOT IN ('voided', 'void_adjustment', 'completed', 'cancelled', 'refunded')
               `).run(status, req.params.id)
             : db.prepare(`
                 UPDATE order_items

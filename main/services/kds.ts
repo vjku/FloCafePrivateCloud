@@ -406,7 +406,7 @@ function handleStatusUpdate(client: KdsClient, message: any): void {
       if (existingItem.status === 'void_adjustment') {
         return { error: 'This bill adjustment cannot be updated from KDS' };
       }
-      if (existingItem.status === 'completed' || existingItem.status === 'cancelled') {
+      if (existingItem.status === 'completed' || existingItem.status === 'cancelled' || existingItem.status === 'refunded') {
         return { error: 'This terminal item cannot be updated from KDS' };
       }
 
@@ -429,7 +429,7 @@ function handleStatusUpdate(client: KdsClient, message: any): void {
       }
 
       const updateResult = expectedStatus === undefined
-        ? db.prepare("UPDATE order_items SET status = ?, updated_at = ? WHERE id = ? AND status NOT IN ('voided', 'void_adjustment', 'completed', 'cancelled')").run(status, now(), order_item_id)
+        ? db.prepare("UPDATE order_items SET status = ?, updated_at = ? WHERE id = ? AND status NOT IN ('voided', 'void_adjustment', 'completed', 'cancelled', 'refunded')").run(status, now(), order_item_id)
         : db.prepare('UPDATE order_items SET status = ?, updated_at = ? WHERE id = ? AND status = ?').run(status, now(), order_item_id, expectedStatus);
       if (updateResult.changes !== 1) {
         return { error: 'Item status changed; refresh and try again' };
@@ -498,9 +498,9 @@ function sendActiveOrders(ws: WebSocket, categoryIds: string[], stationIds: stri
   if (stationIds.length > 0) {
     const stationPlaceholders = stationIds.map(() => '?').join(',');
     const categoryRoute = stationRoutingCategoryIds.length > 0
-      ? ` OR EXISTS (SELECT 1 FROM order_items routed_oi JOIN products routed_p ON routed_p.id = routed_oi.product_id WHERE routed_oi.order_id = o.id AND o.table_id IS NULL AND routed_p.category_id IN (${stationRoutingCategoryIds.map(() => '?').join(',')}))`
+      ? ` OR EXISTS (SELECT 1 FROM order_items routed_oi JOIN products routed_p ON routed_p.id = routed_oi.product_id WHERE routed_oi.order_id = o.id AND t.kitchen_station_id IS NULL AND routed_p.category_id IN (${stationRoutingCategoryIds.map(() => '?').join(',')}))`
       : '';
-    query += ` AND (t.kitchen_station_id IN (${stationPlaceholders})${categoryRoute}${stationScope.hasUnrestrictedStation ? ' OR o.table_id IS NULL' : ''})`;
+    query += ` AND (t.kitchen_station_id IN (${stationPlaceholders})${categoryRoute}${stationScope.hasUnrestrictedStation ? ' OR t.kitchen_station_id IS NULL' : ''})`;
     orderParams.push(...stationIds, ...stationRoutingCategoryIds);
   }
   query += ' ORDER BY o.created_at ASC';
@@ -536,7 +536,7 @@ function sendActiveOrders(ws: WebSocket, categoryIds: string[], stationIds: stri
   const allVisibleItems = (orders as any[])
     .flatMap((o: any) => itemsByOrder[o.id] || [])
     .filter((i: any) => i.status !== 'void_adjustment'
-      && !['completed', 'cancelled'].includes(i.status)
+      && !['completed', 'cancelled', 'refunded'].includes(i.status)
       && (i.status !== 'voided' || isVoidedItemKdsVisible(i.voided_at))
       && isKdsStationItemAllowed(stationIds, stationRoutingCategoryIds, (orders as any[]).find((order) => order.id === i.order_id)?.kitchen_station_id, i.category_id, (orders as any[]).find((order) => order.id === i.order_id)?.kitchen_station_id ? stationScope.categoryIdsByStation[String((orders as any[]).find((order) => order.id === i.order_id)?.kitchen_station_id)] : undefined, stationScope.hasUnrestrictedStation));
   const itemsWithAddons = attachEffectiveAddons(db, allVisibleItems.map(parseItemJson) as any[]);
@@ -547,7 +547,7 @@ function sendActiveOrders(ws: WebSocket, categoryIds: string[], stationIds: stri
     // item) and age voided items off the board after their grace period.
     const visibleItems = (itemsByOrder[order.id] || [])
       .filter((i: any) => i.status !== 'void_adjustment'
-        && !['completed', 'cancelled'].includes(i.status)
+        && !['completed', 'cancelled', 'refunded'].includes(i.status)
         && (i.status !== 'voided' || isVoidedItemKdsVisible(i.voided_at))
         && isKdsStationItemAllowed(stationIds, stationRoutingCategoryIds, order.kitchen_station_id, i.category_id, order.kitchen_station_id ? stationScope.categoryIdsByStation[String(order.kitchen_station_id)] : undefined, stationScope.hasUnrestrictedStation))
       .map((i: any) => addonsByItemId.get(i.id) || i);
@@ -572,7 +572,7 @@ function sendActiveOrders(ws: WebSocket, categoryIds: string[], stationIds: stri
     JOIN orders o ON oi.order_id = o.id
     LEFT JOIN tables t ON o.table_id = t.id
     WHERE ${activeOrdersCondition()}
-      AND oi.status NOT IN ('completed', 'cancelled', 'void_adjustment')
+      AND oi.status NOT IN ('completed', 'cancelled', 'void_adjustment', 'refunded')
       AND (oi.status != 'voided' OR oi.voided_at IS NULL OR oi.voided_at > ?)
   `;
   const countParams: any[] = [voidedCutoff];
@@ -590,10 +590,10 @@ function sendActiveOrders(ws: WebSocket, categoryIds: string[], stationIds: stri
       }
     }
     if (stationRoutingCategoryIds.length > 0) {
-      stationRoutes.push(`(o.table_id IS NULL AND p.category_id IN (${stationRoutingCategoryIds.map(() => '?').join(',')}))`);
+      stationRoutes.push(`(t.kitchen_station_id IS NULL AND p.category_id IN (${stationRoutingCategoryIds.map(() => '?').join(',')}))`);
       countParams.push(...stationRoutingCategoryIds);
     }
-    if (stationScope.hasUnrestrictedStation) stationRoutes.push('o.table_id IS NULL');
+    if (stationScope.hasUnrestrictedStation) stationRoutes.push('t.kitchen_station_id IS NULL');
     countsQuery += ` AND (${stationRoutes.length > 0 ? stationRoutes.join(' OR ') : '0'})`;
   }
   if (categoryIds.length > 0) {

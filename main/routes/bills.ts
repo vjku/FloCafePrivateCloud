@@ -158,7 +158,7 @@ function getPersistedChildTaxBreakdowns(
   for (const breakdown of parsed) {
     while (itemIndex < sourceItems.length) {
       const item = sourceItems[itemIndex++];
-      if (['cancelled', 'voided', 'void_adjustment'].includes(item.status)) continue;
+      if (['cancelled', 'voided', 'void_adjustment', 'refunded'].includes(item.status)) continue;
       const itemBreakdown = parseTaxSnapshot(item.tax_breakdown);
       if (!Array.isArray(itemBreakdown) || itemBreakdown.length === 0) continue;
       result.set(Number(item.id), breakdown);
@@ -299,8 +299,9 @@ export function getOrdersWithItemsForBills(
   return result;
 }
 
-// Fixed conversion rate for redeeming loyalty wallet points as payment (points per 1 currency unit).
-const LOYALTY_REDEMPTION_RATE = 100;
+// Loyalty points are 1:1 with currency units — earning and redemption both
+// use this rate so a customer's point balance always equals its currency value.
+const LOYALTY_REDEMPTION_RATE = 1;
 
 // Rate limiting for PIN validation (simple in-memory)
 const pinAttempts = new Map<string, { count: number; resetAt: number }>();
@@ -1049,7 +1050,7 @@ function collectLegacyTaxContribution(
     ? new Map<number, any>()
     : getPersistedChildTaxBreakdowns(sourceBreakdownRaw, items);
   for (const item of items) {
-    if (['cancelled', 'voided', 'void_adjustment'].includes(item.status) || hasSnapshotLines(item.tax_snapshot)) continue;
+    if (['cancelled', 'voided', 'void_adjustment', 'refunded'].includes(item.status) || hasSnapshotLines(item.tax_snapshot)) continue;
     const sourceCents = persistedBreakdowns.has(Number(item.id))
       ? taxBreakdownMinorTotal(persistedBreakdowns.get(Number(item.id)))
       : Number(item.tax_amount || 0) * taxRatio * 100;
@@ -1176,7 +1177,7 @@ function getSplitBillAllocationWeights(
   const weights = bills.map((bill) => {
     const byItem = quantities.get(Number(bill.id)) || new Map<number, number>();
     return items
-      .filter((item) => !['cancelled', 'voided', 'void_adjustment'].includes(item.status))
+      .filter((item) => !['cancelled', 'voided', 'void_adjustment', 'refunded'].includes(item.status))
       .reduce((sum, item) => {
         const quantity = byItem.get(Number(item.id)) || 0;
         if (quantity <= 0 || Number(item.quantity) <= 0) return sum;
@@ -1185,7 +1186,7 @@ function getSplitBillAllocationWeights(
   });
 
   const snapshotItems = items
-    .filter((item) => !['cancelled', 'voided', 'void_adjustment'].includes(item.status) && hasSnapshotLines(item.tax_snapshot))
+    .filter((item) => !['cancelled', 'voided', 'void_adjustment', 'refunded'].includes(item.status) && hasSnapshotLines(item.tax_snapshot))
   const snapshotWeights = snapshotItems.map((item) => {
     if (['voided', 'void_adjustment'].includes(item.status)) return null;
     const itemWeights = bills.map((bill) => (
@@ -1267,7 +1268,7 @@ function getTaxBreakdownWeights(
   if (!Array.isArray(parsed[0])) {
     const ownerWeightsByKey = new Map<string, number[]>();
     for (const item of items) {
-      if (['cancelled', 'voided', 'void_adjustment'].includes(item.status) || hasSnapshotLines(item.tax_snapshot)) continue;
+      if (['cancelled', 'voided', 'void_adjustment', 'refunded'].includes(item.status) || hasSnapshotLines(item.tax_snapshot)) continue;
       const itemBreakdown = parseTaxSnapshot(item.tax_breakdown);
       if (!Array.isArray(itemBreakdown)) continue;
       const itemComponents = itemBreakdown.flatMap((entry: any) => Array.isArray(entry) ? entry : [entry]);
@@ -1289,7 +1290,7 @@ function getTaxBreakdownWeights(
   return parsed.map(() => {
     while (itemIndex < items.length) {
       const item = items[itemIndex++];
-      if (['cancelled', 'voided', 'void_adjustment'].includes(item.status)) continue;
+      if (['cancelled', 'voided', 'void_adjustment', 'refunded'].includes(item.status)) continue;
       const breakdown = parseTaxSnapshot(item.tax_breakdown);
       if (Array.isArray(breakdown) && breakdown.length > 0) {
         return itemWeights(item);
@@ -1430,7 +1431,7 @@ router.post('/:id/split-check', requireRole(...ROLE_ACCESS.ownerManagerCashier),
       if (txnSource.split_group_id || Number((db.prepare('SELECT COUNT(*) AS n FROM bills WHERE order_id = ?').get(txnSource.order_id) as any).n) > 1) {
         throw Object.assign(new Error('This check has already been split'), { statusCode: 409 });
       }
-      const txnActiveItems = db.prepare("SELECT * FROM order_items WHERE order_id = ? AND status NOT IN ('cancelled', 'voided', 'void_adjustment') ORDER BY id").all(txnSource.order_id) as any[];
+      const txnActiveItems = db.prepare("SELECT * FROM order_items WHERE order_id = ? AND status NOT IN ('cancelled', 'voided', 'void_adjustment', 'refunded') ORDER BY id").all(txnSource.order_id) as any[];
       const txnItemById = new Map(txnActiveItems.map((item) => [Number(item.id), item]));
       const txnAssigned = new Map<number, number>();
 
@@ -1798,8 +1799,8 @@ function preparePaymentBatch(
     const credits = db.prepare(`SELECT COALESCE(SUM(amount), 0) as total FROM loyalty_ledger WHERE customer_id = ? AND type = 'credit' AND (expires_at IS NULL OR expires_at > datetime('now'))`).get(effectiveCustomerId) as { total: number };
     const debits = db.prepare(`SELECT COALESCE(SUM(amount), 0) as total FROM loyalty_ledger WHERE customer_id = ? AND type = 'debit'`).get(effectiveCustomerId) as { total: number };
     const walletPoints = Math.max(0, Number(credits.total) - Number(debits.total));
-    const pointsRequired = prepared.filter((line) => line.payment.method === 'wallet').reduce((sum, line) => sum + line.amountCents, 0);
-    if (walletPoints < pointsRequired) throw Object.assign(new Error(`Insufficient wallet balance. Available: ${Math.floor(walletPoints / LOYALTY_REDEMPTION_RATE)} (${walletPoints} points), Required: ${pointsRequired / 100}`), { statusCode: 400 });
+    const pointsRequired = prepared.filter((line) => line.payment.method === 'wallet').reduce((sum, line) => sum + line.amountCents, 0) / 100 * LOYALTY_REDEMPTION_RATE;
+    if (walletPoints < pointsRequired) throw Object.assign(new Error(`Insufficient wallet balance. Available: ${walletPoints} points, Required: ${pointsRequired}`), { statusCode: 400 });
   }
   return { bill, prepared, existingPayments, effectiveCustomerId };
 }
@@ -1877,7 +1878,8 @@ function applyPaymentBatch(
   let walletDebited = false;
   for (const line of prepared) {
     if (line.payment.method !== 'wallet' || line.amountCents <= 0) continue;
-    db.prepare(`INSERT INTO loyalty_ledger (customer_id, bill_id, type, amount, description, created_at, updated_at) VALUES (?, ?, 'debit', ?, ?, ?, ?)`).run(effectiveCustomerId, bill.id, line.amountCents, `Payment for bill ${bill.bill_number}`, now(), now());
+    const pointsSpent = line.amountCents / 100 * LOYALTY_REDEMPTION_RATE;
+    db.prepare(`INSERT INTO loyalty_ledger (customer_id, bill_id, type, amount, description, created_at, updated_at) VALUES (?, ?, 'debit', ?, ?, ?, ?)`).run(effectiveCustomerId, bill.id, pointsSpent, `Payment for bill ${bill.bill_number}`, now(), now());
     walletDebited = true;
   }
   const allPayments = existingPayments.concat(newPayments);

@@ -16,6 +16,7 @@ import {
   markWindowRendererReady,
   registerRendererDocument,
 } from './window-readiness';
+import { isThemeMode, appendThemeQueryParam } from './title-bar-theme';
 
 // Settings keys the renderer is allowed to write via IPC.
 // Must stay in sync with routes/settings.ts ALLOWED_WILDCARD_KEYS.
@@ -31,6 +32,7 @@ const ALLOWED_IPC_KEYS = new Set([
   'printer_method', 'paper_size', 'bill_template', 'bill_footer_message',
   'telemetry_enabled', 'telemetry_url',
   'auto_update_consent', 'tax_pack_catalog_consent',
+  'theme_mode',
 ]);
 
 const SENSITIVE_SETTING_KEYS = new Set([
@@ -57,7 +59,7 @@ function getErrorMessage(error: unknown): string {
  * LAN-served HTTP content and must not reach these handlers, so non-PIN-gated
  * handlers verify the sender's origin before doing anything.
  */
-function isTrustedSender(event: Pick<Electron.IpcMainInvokeEvent, 'sender'>): boolean {
+export function isTrustedSender(event: Pick<Electron.IpcMainInvokeEvent, 'sender'>): boolean {
   try {
     const url = event.sender?.getURL?.() ?? '';
     return url.startsWith('http://localhost:') || url.startsWith('http://127.0.0.1:');
@@ -115,6 +117,8 @@ function handle<Args extends unknown[]>(channel: string, listener: IpcHandler<Ar
 export function registerIpcHandlers(
   shutdownSignal?: AbortSignal,
   getMainWindow?: MainWindowGetter,
+  showMainWindow: (window: BrowserWindow) => boolean = () => false,
+  getCurrentEffectiveIsDark?: () => boolean,
 ): void {
   ipcMain.on('window-document', (event, documentNonce: unknown) => {
     let currentFrame: Electron.WebFrameMain | null = null;
@@ -336,7 +340,7 @@ export function registerIpcHandlers(
     if (!markWindowRendererReady(reported?.epoch, reported?.documentNonce)) {
       return { success: false, error: 'Stale or invalid readiness report' };
     }
-    win.show();
+    showMainWindow(win);
     return { success: true };
   });
 
@@ -365,6 +369,9 @@ export function registerIpcHandlers(
       }
       if (!ALLOWED_IPC_KEYS.has(key)) {
         return { success: false, error: 'Setting not allowed via IPC' };
+      }
+      if (key === 'theme_mode' && !isThemeMode(value)) {
+        return { success: false, error: 'Invalid theme_mode value' };
       }
       const db = getDatabase();
       db.prepare('INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, ?)')
@@ -431,7 +438,14 @@ export function registerIpcHandlers(
       if (!allowed) event.preventDefault();
     });
 
-    activeKdsWindow.loadURL(`${kdsOrigin}/kds`);
+    // gh-513: KDS window has no preload and a LAN-IP origin — it learns the
+    // current palette from the URL param (read by the root-layout FOUC
+    // script), since it can't share the main window's localStorage mirror.
+    const kdsUrl = appendThemeQueryParam(
+      `${kdsOrigin}/kds`,
+      getCurrentEffectiveIsDark ? getCurrentEffectiveIsDark() : false,
+    );
+    activeKdsWindow.loadURL(kdsUrl);
   });
 
   handle('get-app-info', async () => {
@@ -496,9 +510,11 @@ export function registerIpcHandlers(
       const today = new Date().toISOString().slice(0, 10);
 
       const bills = db.prepare(`
-        SELECT COUNT(*) as bill_count, COALESCE(SUM(total), 0) as revenue
-        FROM bills WHERE date(created_at) = date(?) AND payment_status = 'paid'
-      `).get(today) as { bill_count: number; revenue: number };
+        SELECT
+          (SELECT COUNT(*) FROM bills WHERE date(paid_at) = date(?)) as bill_count,
+          COALESCE((SELECT SUM(paid_amount) FROM bills WHERE date(paid_at) = date(?)), 0)
+          - COALESCE((SELECT SUM(amount_cents) / 100.0 FROM refunds WHERE date(created_at) = date(?)), 0) as revenue
+      `).get(today, today, today) as { bill_count: number; revenue: number };
 
       const covers = db.prepare(`
         SELECT COALESCE(SUM(guest_count), 0) as covers FROM orders

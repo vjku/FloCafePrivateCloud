@@ -109,16 +109,16 @@ router.get('/orders', requireKdsEnabled, (req: Request, res: Response) => {
     if (userStationIds.length > 0) {
       const stationPlaceholders = userStationIds.map(() => '?').join(',');
       const categoryRoute = stationRoutingCategoryIds.length > 0
-        ? ` OR EXISTS (SELECT 1 FROM order_items routed_oi JOIN products routed_p ON routed_p.id = routed_oi.product_id WHERE routed_oi.order_id = o.id AND o.table_id IS NULL AND routed_p.category_id IN (${stationRoutingCategoryIds.map(() => '?').join(',')}))`
+        ? ` OR EXISTS (SELECT 1 FROM order_items routed_oi JOIN products routed_p ON routed_p.id = routed_oi.product_id WHERE routed_oi.order_id = o.id AND t.kitchen_station_id IS NULL AND routed_p.category_id IN (${stationRoutingCategoryIds.map(() => '?').join(',')}))`
         : '';
-      query += ` AND (t.kitchen_station_id IN (${stationPlaceholders})${categoryRoute}${requestedScope.hasUnrestrictedStation ? ' OR o.table_id IS NULL' : ''})`;
+      query += ` AND (t.kitchen_station_id IN (${stationPlaceholders})${categoryRoute}${requestedScope.hasUnrestrictedStation ? ' OR t.kitchen_station_id IS NULL' : ''})`;
       params.push(...userStationIds, ...stationRoutingCategoryIds);
     }
     if (stationId) {
       const categoryRoute = requestedRoutingCategoryIds.length > 0
-        ? ` OR EXISTS (SELECT 1 FROM order_items requested_oi JOIN products requested_p ON requested_p.id = requested_oi.product_id WHERE requested_oi.order_id = o.id AND o.table_id IS NULL AND requested_p.category_id IN (${requestedRoutingCategoryIds.map(() => '?').join(',')}))`
+        ? ` OR EXISTS (SELECT 1 FROM order_items requested_oi JOIN products requested_p ON requested_p.id = requested_oi.product_id WHERE requested_oi.order_id = o.id AND t.kitchen_station_id IS NULL AND requested_p.category_id IN (${requestedRoutingCategoryIds.map(() => '?').join(',')}))`
         : '';
-      query += ` AND (t.kitchen_station_id = ?${categoryRoute}${requestedScope.hasUnrestrictedStation ? ' OR o.table_id IS NULL' : ''})`;
+      query += ` AND (t.kitchen_station_id = ?${categoryRoute}${requestedScope.hasUnrestrictedStation ? ' OR t.kitchen_station_id IS NULL' : ''})`;
       params.push(stationId, ...requestedRoutingCategoryIds);
     }
 
@@ -150,7 +150,7 @@ router.get('/orders', requireKdsEnabled, (req: Request, res: Response) => {
     const allVisibleItems = (orders as any[])
       .flatMap((o) => itemsByOrder[o.id] || [])
       .filter((i) => i.status !== 'void_adjustment'
-        && !['completed', 'cancelled'].includes(i.status)
+        && !['completed', 'cancelled', 'refunded'].includes(i.status)
         && (i.status !== 'voided' || isVoidedItemKdsVisible(i.voided_at))
         && (!allowedProductIds || allowedProductIds.has(String(i.product_id)))
         && isKdsStationItemAllowed(payloadStationIds, requestedRoutingCategoryIds, ordersById.get(i.order_id)?.kitchen_station_id, i.category_id, ordersById.get(i.order_id)?.kitchen_station_id ? requestedScope.categoryIdsByStation[String(ordersById.get(i.order_id)?.kitchen_station_id)] : undefined, requestedScope.hasUnrestrictedStation));
@@ -162,7 +162,7 @@ router.get('/orders', requireKdsEnabled, (req: Request, res: Response) => {
       // item) and age voided items off the board after their grace period.
       const visibleItems = (itemsByOrder[order.id] || [])
         .filter((i) => i.status !== 'void_adjustment'
-          && !['completed', 'cancelled'].includes(i.status)
+          && !['completed', 'cancelled', 'refunded'].includes(i.status)
           && (i.status !== 'voided' || isVoidedItemKdsVisible(i.voided_at))
           && (!allowedProductIds || allowedProductIds.has(String(i.product_id)))
           && isKdsStationItemAllowed(payloadStationIds, requestedRoutingCategoryIds, order.kitchen_station_id, i.category_id, order.kitchen_station_id ? requestedScope.categoryIdsByStation[String(order.kitchen_station_id)] : undefined, requestedScope.hasUnrestrictedStation))
@@ -311,16 +311,16 @@ router.get('/display', requireKdsEnabled, (req: Request, res: Response) => {
       FROM order_items oi
       JOIN orders o ON oi.order_id = o.id
       LEFT JOIN tables t ON o.table_id = t.id
-      WHERE oi.status NOT IN ('completed', 'cancelled', 'served', 'void_adjustment')
+      WHERE oi.status NOT IN ('completed', 'cancelled', 'served', 'void_adjustment', 'refunded')
         AND (oi.status != 'voided' OR oi.voided_at IS NULL OR oi.voided_at > ?)
         AND o.status != 'cancelled'
     `;
 
     const params: any[] = [voidedCutoff];
     const categoryRoute = stationItemCategoryIds === null
-      ? ' OR o.table_id IS NULL'
+      ? ' OR t.kitchen_station_id IS NULL'
       : stationItemCategoryIds.length > 0
-        ? ` OR EXISTS (SELECT 1 FROM products routed_p WHERE o.table_id IS NULL AND routed_p.id = oi.product_id AND routed_p.category_id IN (${stationItemCategoryIds.map(() => '?').join(',')}))`
+        ? ` OR EXISTS (SELECT 1 FROM products routed_p WHERE t.kitchen_station_id IS NULL AND routed_p.id = oi.product_id AND routed_p.category_id IN (${stationItemCategoryIds.map(() => '?').join(',')}))`
         : '';
     itemsQuery += ` AND (t.kitchen_station_id = ?${categoryRoute})`;
     params.push(stationId, ...(stationItemCategoryIds || []));
@@ -422,7 +422,7 @@ router.patch('/items/:id/status', requireKdsEnabled, (req: Request, res: Respons
       if (item.status === 'void_adjustment') {
         throw new Error('IMMUTABLE_KDS_ITEM');
       }
-      if (item.status === 'completed' || item.status === 'cancelled') {
+      if (item.status === 'completed' || item.status === 'cancelled' || item.status === 'refunded') {
         throw new Error('TERMINAL_KDS_ITEM');
       }
 
@@ -447,7 +447,7 @@ router.patch('/items/:id/status', requireKdsEnabled, (req: Request, res: Respons
       }
 
       const updateResult = expectedStatus === undefined
-        ? db.prepare("UPDATE order_items SET status = ?, updated_at = ? WHERE id = ? AND status NOT IN ('voided', 'void_adjustment', 'completed', 'cancelled')").run(status, now(), req.params.id)
+        ? db.prepare("UPDATE order_items SET status = ?, updated_at = ? WHERE id = ? AND status NOT IN ('voided', 'void_adjustment', 'completed', 'cancelled', 'refunded')").run(status, now(), req.params.id)
         : db.prepare('UPDATE order_items SET status = ?, updated_at = ? WHERE id = ? AND status = ?').run(status, now(), req.params.id, expectedStatus);
       if (updateResult.changes !== 1) throw new Error('STATUS_CONFLICT');
 

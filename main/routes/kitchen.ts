@@ -53,8 +53,8 @@ router.get('/orders', (req: Request, res: Response) => {
 
     const stationFilter = stationIds.length > 0
       ? ` AND (EXISTS (SELECT 1 FROM tables assigned_table WHERE assigned_table.id = o.table_id AND assigned_table.kitchen_station_id IN (${stationIds.map(() => '?').join(',')}))
-          ${stationRoutingCategoryIds.length > 0 ? `OR EXISTS (SELECT 1 FROM order_items routed_oi JOIN products routed_p ON routed_p.id = routed_oi.product_id WHERE routed_oi.order_id = o.id AND o.table_id IS NULL AND routed_p.category_id IN (${stationRoutingCategoryIds.map(() => '?').join(',')}))` : ''}
-          ${stationScope.hasUnrestrictedStation ? 'OR o.table_id IS NULL' : ''})`
+          ${stationRoutingCategoryIds.length > 0 ? `OR EXISTS (SELECT 1 FROM order_items routed_oi JOIN products routed_p ON routed_p.id = routed_oi.product_id WHERE routed_oi.order_id = o.id AND t.kitchen_station_id IS NULL AND routed_p.category_id IN (${stationRoutingCategoryIds.map(() => '?').join(',')}))` : ''}
+          ${stationScope.hasUnrestrictedStation ? 'OR t.kitchen_station_id IS NULL' : ''})`
       : '';
     const orders = db.prepare(`
       SELECT o.*, t.kitchen_station_id
@@ -98,7 +98,7 @@ router.get('/orders', (req: Request, res: Response) => {
     // Resolve addons for every visible item in one batched call.
     const allVisibleItems = rawItems.filter(
       (i) => i.status !== 'void_adjustment'
-        && !['completed', 'cancelled'].includes(i.status)
+        && !['completed', 'cancelled', 'refunded'].includes(i.status)
         && (i.status !== 'voided' || isVoidedItemKdsVisible(i.voided_at))
         && (!allowedProductIds || allowedProductIds.has(String(i.product_id)))
         && isKdsStationItemAllowed(stationIds, stationRoutingCategoryIds, ordersById.get(i.order_id)?.kitchen_station_id, i.category_id, ordersById.get(i.order_id)?.kitchen_station_id ? stationScope.categoryIdsByStation[String(ordersById.get(i.order_id)?.kitchen_station_id)] : undefined, stationScope.hasUnrestrictedStation)
@@ -110,7 +110,7 @@ router.get('/orders', (req: Request, res: Response) => {
       const orderRawItems = itemsByOrder[order.id] || [];
       const visibleItems = orderRawItems
         .filter((i) => i.status !== 'void_adjustment'
-          && !['completed', 'cancelled'].includes(i.status)
+          && !['completed', 'cancelled', 'refunded'].includes(i.status)
           && (i.status !== 'voided' || isVoidedItemKdsVisible(i.voided_at))
           && (!allowedProductIds || allowedProductIds.has(String(i.product_id)))
           && isKdsStationItemAllowed(stationIds, stationRoutingCategoryIds, order.kitchen_station_id, i.category_id, order.kitchen_station_id ? stationScope.categoryIdsByStation[String(order.kitchen_station_id)] : undefined, stationScope.hasUnrestrictedStation))

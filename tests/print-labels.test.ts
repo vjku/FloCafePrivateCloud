@@ -5,7 +5,7 @@
  * the generated derived view (`main/print/print-labels.generated.ts`) backed
  * by canonical locale messages. This suite asserts:
  *
- *   1. printLabel selects en/fa/es/pt tables and falls back to English for
+ *   1. printLabel selects en/fa/es/fr/pt tables and falls back to English for
  *      unknown languages (never raw keys).
  *   2. formatReceipt / formatKOT / buildTestPage honor the optional
  *      `language` parameter with English as the default.
@@ -27,6 +27,7 @@ import {
 import {
   printLabel,
 } from '../main/print/print-labels.generated';
+import { renderCompactReceiptViaDocument } from '../main/printers/document-compact';
 
 let passed = 0;
 let failed = 0;
@@ -46,6 +47,7 @@ function assert(label: string, cond: boolean, detail?: string) {
 function buildOrder(): any {
   return {
     order_number: 'ORD-LABELS-001',
+    type: 'dine_in',
     created_at: '2026-08-21 18:42:00',
     table: { name: '7' },
     items: [{
@@ -104,8 +106,9 @@ function run(): void {
   assert('en resolves grand total to TOTAL', printLabel('en', 'print.grandTotal') === 'TOTAL');
   assert('fa resolves grand total to Persian', printLabel('fa', 'print.grandTotal') === 'جمع کل');
   assert('es resolves grand total', typeof printLabel('es', 'print.grandTotal') === 'string' && printLabel('es', 'print.grandTotal').length > 0);
+  assert('fr resolves grand total to French', printLabel('fr', 'print.grandTotal') === 'TOTAL');
   assert('pt resolves grand total', typeof printLabel('pt', 'print.grandTotal') === 'string' && printLabel('pt', 'print.grandTotal').length > 0);
-  assert('unknown language falls back to English', printLabel('fr', 'print.grandTotal') === 'TOTAL');
+  assert('unknown language falls back to English', printLabel('de', 'print.grandTotal') === 'TOTAL');
   assert('empty language falls back to English', printLabel('', 'receipt.billNumber') === 'Bill #');
   assert('borrowed key resolves from its own namespace', printLabel('en', 'pos.subtotal') === 'Subtotal');
 
@@ -131,6 +134,17 @@ function run(): void {
     const esText = escPosToText(formatReceipt(buildOrder(), buildBill(), buildBusiness(), 'compact', 48, false, false, undefined, [], false, 'es'));
     assert('es compact localizes bill number label', esText.includes('Comprobante #'));
     assert('es compact localizes date label', esText.includes('Fecha:'));
+    const frResult = renderCompactReceiptViaDocument(buildOrder(), buildBill(), buildBusiness(), {
+      columns: 48,
+      language: 'fr',
+      isReprint: false,
+      useUnicode: false,
+      arabicShaping: false,
+      cutMode: 'full',
+    });
+    const frLines = frResult.lines.join('\n');
+    assert('fr compact localizes bill number label', frLines.includes('N° de facture:'));
+    assert('fr compact localizes item label', frLines.includes('Article'));
   }
 
   console.log('\n✅ Test 4: KOT honors language');
@@ -138,9 +152,11 @@ function run(): void {
     const order = { ...buildOrder(), table: { name: '3' } };
     const text = escPosToText(formatKOT(order, order.items, 'Grill', 48));
     assert('default KOT banner stays English', text.includes('KITCHEN ORDER TICKET'));
+    assert('default KOT type label stays English', text.includes('Type: DINE IN'));
     const faText = escPosToText(formatKOT(order, order.items, 'Grill', 48, false, 'full', 'en-US', undefined, [], true, 'fa'));
     assert('fa KOT banner translated', faText.includes('برگ سفارش آشپزخانه'));
     assert('fa KOT station label translated', faText.includes('ایستگاه:'));
+    assert('fa KOT type label translated', faText.includes('نوع: DINE IN'));
     assert('fa KOT time label translated', faText.includes('ساعت:'));
   }
 

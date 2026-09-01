@@ -191,17 +191,19 @@ function run(): void {
 
   React.useSyncExternalStore = (_subscribe: any, getSnapshot: () => any) => getSnapshot();
 
-  function renderDirectionalToaster(locale: string): { position?: string; containerStyle?: any; markup: string } {
+  function renderDirectionalToaster(locale: string): { position?: string; containerStyle?: any; markup: string; key?: string | null } {
     let capturedProps: any;
+    let capturedKey: string | null | undefined;
     function Probe() {
       const elem = DirectionalToaster();
       capturedProps = elem?.props;
+      capturedKey = elem?.key;
       return elem;
     }
     const markup = ReactDOMServer.renderToStaticMarkup(
       React.createElement(IntlProvider, { locale }, React.createElement(Probe))
     );
-    return { position: capturedProps?.position, containerStyle: capturedProps?.containerStyle, markup };
+    return { position: capturedProps?.position, containerStyle: capturedProps?.containerStyle, markup, key: capturedKey };
   }
 
   usePosSettingsStore.getState().setLanguage('fa');
@@ -218,8 +220,12 @@ function run(): void {
     typeof renderedFa.markup === 'string' && renderedFa.markup.length > 0,
     'DirectionalToaster must render static markup for Persian'
   );
+  assert(
+    renderedFa.key === 'rtl',
+    `DirectionalToaster must key its Toaster "rtl" for Persian so a direction flip fully remounts it (regression guard for the insertBefore/NotFoundError crash when react-hot-toast's position prop changes on a live instance), got: ${renderedFa.key}`
+  );
 
-  for (const ltrLang of ['en', 'es', 'pt'] as const) {
+  for (const ltrLang of ['en', 'es', 'fr', 'pt'] as const) {
     usePosSettingsStore.getState().setLanguage(ltrLang);
     const renderedLtr = renderDirectionalToaster(getLanguageLocale(ltrLang));
     assert(
@@ -234,8 +240,13 @@ function run(): void {
       typeof renderedLtr.markup === 'string' && renderedLtr.markup.length > 0,
       `DirectionalToaster must render static markup for ${ltrLang}`
     );
+    assert(
+      renderedLtr.key === 'ltr',
+      `DirectionalToaster must key its Toaster "ltr" for ${ltrLang} so a direction flip fully remounts it (regression guard for the insertBefore/NotFoundError crash when react-hot-toast's position prop changes on a live instance), got: ${renderedLtr.key}`
+    );
   }
   console.log('  ✓ DirectionalToaster dynamically adapts toast placement across RTL/LTR languages with titlebar offset');
+  console.log('  ✓ DirectionalToaster keys its Toaster by direction to force remount instead of a live position swap (insertBefore/NotFoundError regression guard)');
 
   // 5. Executable Ltr component rendering for POS/operational values.
   const orderRender = ReactDOMServer.renderToStaticMarkup(
@@ -290,7 +301,7 @@ function run(): void {
   // 6. Shared language-direction metadata (single source of truth).
   const { getLanguageDirection } = require('../frontend/src/lib/i18n');
   assert(getLanguageDirection('fa') === 'rtl', 'Persian (fa) must resolve to rtl');
-  for (const ltrLang of ['en', 'es', 'pt'] as const) {
+  for (const ltrLang of ['en', 'es', 'fr', 'pt'] as const) {
     assert(getLanguageDirection(ltrLang) === 'ltr', `${ltrLang} must resolve to ltr`);
   }
   console.log('  ✓ getLanguageDirection resolves direction from shared language metadata');
