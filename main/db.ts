@@ -4192,6 +4192,60 @@ export const MIGRATIONS: { version: number; name: string; up: () => void }[] = [
       }
     },
   },
+  {
+    // Fork-only guard: the fork's date-stamped schema versions (2026082801,
+    // 2026082802) were released ABOVE upstream's sequential v76 (refunds) and
+    // v77 (weighted products). The v3.5.0 merge therefore runs 76/77 *after*
+    // those numbers in the registry, and runMigrations() skips any migration
+    // whose version is <= the install's current user_version. An existing
+    // fork install sitting at 2026082802 would otherwise never create the
+    // refunds/refund_idempotency tables or the weighted-product columns —
+    // and the current>target guard would additionally reject the whole DB as
+    // "newer" than v77. This guard re-applies the exact same guarded DDL
+    // idempotently so fresh installs no-op and 2026082802 installs converge.
+    version: 2026090201,
+    name: 'ensure_refunds_and_weighted_schema',
+    up: () => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS refunds (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          bill_id INTEGER NOT NULL REFERENCES bills(id),
+          order_item_id INTEGER REFERENCES order_items(id),
+          amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+          method TEXT NOT NULL,
+          reason TEXT,
+          shift_id TEXT,
+          approved_by TEXT NOT NULL REFERENCES users(id),
+          created_by TEXT NOT NULL REFERENCES users(id),
+          created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_refunds_bill ON refunds(bill_id);
+        CREATE INDEX IF NOT EXISTS idx_refunds_order_item ON refunds(order_item_id);
+
+        CREATE TABLE IF NOT EXISTS refund_idempotency (
+          user_id TEXT NOT NULL,
+          idempotency_key TEXT NOT NULL,
+          bill_id TEXT NOT NULL,
+          request_hash TEXT NOT NULL,
+          response_json TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          PRIMARY KEY (user_id, idempotency_key)
+        );
+        CREATE INDEX IF NOT EXISTS idx_refund_idempotency_bill ON refund_idempotency(bill_id);
+      `);
+      const columns = db.prepare(`PRAGMA table_info(products)`).all() as Array<{ name: string }>;
+      const hasColumn = (name: string) => columns.some((column) => column.name === name);
+      if (!hasColumn('sale_unit')) {
+        db.exec(`ALTER TABLE products ADD COLUMN sale_unit TEXT NOT NULL DEFAULT 'each' CHECK (sale_unit IN ('each', 'kg', 'g', 'lb'))`);
+      }
+      if (!hasColumn('allow_fractional_quantity')) {
+        db.exec(`ALTER TABLE products ADD COLUMN allow_fractional_quantity INTEGER NOT NULL DEFAULT 0`);
+      }
+      if (!hasColumn('weight_precision')) {
+        db.exec(`ALTER TABLE products ADD COLUMN weight_precision INTEGER NOT NULL DEFAULT 3 CHECK (weight_precision BETWEEN 0 AND 4)`);
+      }
+    },
+  },
 ];
 
 function syncBackupBeforeMigration(fromVersion: number, toVersion: number): void {

@@ -27,6 +27,7 @@ All notable changes to Flo Cafe are documented here. Dates are release dates, no
 - **Security:** Hardened password changes (including a shortened change lockout) and repaired lockfile metadata.
 - **Server app:** The port-fallback logic now tolerates `EACCES` (permission-denied binds) on Windows and Docker, not just `EADDRINUSE`.
 - **CI:** Stabilized native runtime-recovery tests on slow CI runners, kept Microsoft Store submissions manual (tag pushes only), and preserved snap evidence artifacts.
+- **Database:** Added an upgrade-path guard migration so existing FloCafePrivateCloud installs (whose schema versions already exceed the new upstream v76/v77) converge onto the refunds and weighted-product schema instead of being rejected as "newer" or silently missing those tables and columns.
 
 ## [3.3.1-beta.3.4] - 2026-08-28
 
