@@ -85,6 +85,7 @@ export function renderMerchantReceiptViaDocument(
       cutMode: opts.cutMode,
       arabicShaping: opts.arabicShaping,
       columns: opts.columns,
+      language: opts.language,
     }, warnings);
     return { data, lines, warnings, fellBackToClassic };
   };

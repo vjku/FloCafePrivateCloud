@@ -5,7 +5,7 @@ All notable changes to Flo Cafe are documented here. Dates are release dates, no
 ## [3.5.1] - 2026-09-02
 
 ### Added
-- **i18n:** Added Tagalog (Filipino) and Turkish language support with complete translation parity; merged upstream helpers keep every locale aligned with English.
+- **i18n:** Added German, Tagalog (Filipino) and Turkish language support with complete translation parity; merged upstream helpers keep every locale aligned with English.
 - **Orders:** Added an online order type so `online` orders carry the platform name (`online_platform`) and the platform's own order ID (`external_order_id`), which are shown on kitchen tickets and receipts for cross-referencing back to the source system.
 - **POS:** Added a top-bar sync status that reflects live product/price data freshness for multi-terminal use.
 
