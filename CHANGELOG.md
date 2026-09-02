@@ -2,6 +2,32 @@
 
 All notable changes to Flo Cafe are documented here. Dates are release dates, not commit dates. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [3.5.0] - 2026-09-01
+
+### Added
+- **POS:** Added weighted products (kg/g/lb sale units) and a refund workflow backed by a configurable eligibility window, with refund amounts attributed consistently to the original bill across dashboard, reports, and cloud sync.
+- **i18n:** Added full French language support with complete translation parity, plus translated README files in the supported languages.
+- **Appearance:** Added Light/Dark/System theme support with title-bar synchronization and a quick theme toggle in the sidebar footer; the theme preference survives relaunch and is honored across POS, Settings, KDS, dashboard, and helper windows.
+- **Orders:** Added quick customer creation directly from the orders page, with lookup normalization so formatted phone searches resolve correctly.
+- **POS:** Added touchscreen-first controls for tablet-oriented storefront use.
+- **Reports:** Added an owner-only financial summary endpoint (gross/net collections, refund totals, payment-method breakdown, and a refund audit trail) with a Day/Month toggle on the dashboard backed by it.
+
+### Changed
+- **Loyalty:** Cashback points are now earned 1:1 with currency (previously a leftover 100x constant inflated points); wallet redemption and debit recording were aligned, and the customer ledger now shows per-bill billing history plus spend/points totals.
+- **Settings:** Restored the Settings entry to the main sidebar navigation and removed the redundant profile-dropdown copy.
+- **Snap Store:** Beta releases now publish to the `edge` channel (the beta channel is not permitted for the store macaroon), keeping stable on `stable`.
+- Order-type and appended-item details are now included on kitchen-order tickets (KOT).
+
+### Fixed
+- **Runtime recovery:** Dead runtime detection on window activation now probes the real `/api/health` endpoints before trusting a hidden-window show, relaunches are bounded across restarts (a second failure after an automatic relaunch shows a dialog instead of looping), and the relaunch marker is cleared after successful recovery so later independent relaunches still work.
+- **Updater:** Fixed a shutdown race where the installer state was lost (`event.preventDefault()` on `will-quit` broke the macOS/Windows/Linux relaunch hook); cleanup now finishes before `quitAndInstall`, relaunch is guaranteed on Windows and Linux, and install state can't be poisoned by a late error callback.
+- **Theme sync:** Fixed `GET /api/settings/theme_mode` 404 on fresh installs by registering `theme_mode` in the optional-setting defaults; fixed a `DirectionalToaster` crash when a toast was showing during a live UI-direction flip.
+- **KDS:** Category-scoped kitchen-station routing now also applies to dine-in orders (previously only orders without a table matched, hiding dine-in items from category-station screens).
+- **KOT printing:** Order type and appended items are now included on printed kitchen tickets.
+- **Security:** Hardened password changes (including a shortened change lockout) and repaired lockfile metadata.
+- **Server app:** The port-fallback logic now tolerates `EACCES` (permission-denied binds) on Windows and Docker, not just `EADDRINUSE`.
+- **CI:** Stabilized native runtime-recovery tests on slow CI runners, kept Microsoft Store submissions manual (tag pushes only), and preserved snap evidence artifacts.
+
 ## [3.3.1-beta.3.4] - 2026-08-28
 
 ### Added

@@ -177,20 +177,29 @@
   },
   "customers": {
     "actionRequired": "اقدام لازم است",
+    "billingHistory": "تاریخچه صورت‌حساب",
     "columnActions": "کارها",
+    "columnAmount": "مبلغ",
+    "columnBill": "صورت‌حساب",
     "columnCustomer": "مشتری",
     "columnDate": "تاریخ",
     "columnDescription": "شرح",
+    "columnEarned": "کسب‌شده",
     "columnExpires": "پایان اعتبار",
     "columnLastVisit": "آخرین بازدید",
     "columnLedger": "دفتر حساب",
     "columnPoints": "امتیازها",
+    "columnRedeemed": "استفاده‌شده",
     "empty": "هیچ مشتری‌ای پیدا نشد",
     "first200": "۲۰۰ مشتری نخست نشان داده می‌شوند — برای دیدن موارد بیشتر، جستجوی خود را دقیق‌تر کنید.",
     "invalidPhoneCount": "{count, plural, one {شماره تلفن # مشتری قالب نادرست یا قدیمی دارد.} other {شماره تلفن # مشتری قالب نادرست یا قدیمی دارد.}}",
     "loyaltyLedger": "دفتر حساب وفاداری",
+    "noBills": "هنوز هیچ صورت‌حسابی وجود ندارد",
     "noTransactions": "هنوز هیچ تراکنشی انجام نشده است",
-    "totalBalance": "کل مانده"
+    "pointsHistory": "تاریخچه امتیازها",
+    "totalBalance": "کل مانده",
+    "totalPointsEarned": "امتیاز کسب‌شده",
+    "totalPointsRedeemed": "امتیاز استفاده‌شده"
   },
   "dashboard": {
     "aov": "میانگین ارزش سفارش",
@@ -649,7 +658,14 @@
     "totalDue": "کل قابل پرداخت",
     "unpaid": "پرداخت‌نشده",
     "updateDiscount": "به‌روزرسانی تخفیف",
-    "walletMaxAmount": "مبلغ کیف از مانده در دسترس بیشتر است. بیشینه: {max}"
+    "walletMaxAmount": "مبلغ کیف از مانده در دسترس بیشتر است. بیشینه: {max}",
+    "clearAmount": "پاک کردن مبلغ",
+    "enterFullscreen": "ورود به صندوق تمام‌صفحه",
+    "exactAmount": "مبلغ دقیق",
+    "exitFullscreen": "خروج از صندوق تمام‌صفحه",
+    "fullscreenUnavailable": "حالت تمام‌صفحه در دسترس نیست",
+    "backspaceAmount": "حذف رقم آخر",
+    "numericKeypad": "صفحه‌کلید عددی"
   },
   "printTest": {
     "amt": "مبلغ",
@@ -1700,7 +1716,12 @@
     "cloudShareEmail": "اشتراک ایمیل مالکم با این کارساز ابری",
     "cloudShareEmailDescription": "اجازه دهید این کارساز ابری ایمیل مالک شما را برای ارتباط حساب و بازیابی ذخیره و استفاده کند. به‌طور پیش‌فرض غیرفعال است. ایمیل شما بدون این رضایت هرگز به اشتراک گذاشته نمی‌شود.",
     "cloudSyncEnabled": "همگام‌سازی ابری فعال شد",
-    "saved": "ذخیره شد"
+"saved": "ذخیره شد",
+    "tabAppearance": "ظاهر",
+    "themeTitle": "پوسته",
+    "themeLight": "روشن",
+    "themeDark": "تاریک",
+    "themeSystem": "سیستم"
   },
   "setup": {
     "alreadyCompleted": "راه‌اندازی در این نصب پیش‌تر انجام شده است. در حال بازگشت به ورود…",
