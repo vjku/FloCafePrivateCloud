@@ -4192,17 +4192,31 @@ export const MIGRATIONS: { version: number; name: string; up: () => void }[] = [
       }
     },
   },
+{
+    version: 78,
+    name: 'add_online_order_reference',
+    up: () => {
+      // #284: 'online' orders (third-party aggregators / web ordering) carry
+      // the platform name + the platform's own order id so the KOT/receipt
+      // can cross-reference it back to the source system.
+      const orderColumns = getColumns(db, 'orders');
+      if (!orderColumns.includes('online_platform')) {
+        db.exec(`ALTER TABLE orders ADD COLUMN online_platform TEXT DEFAULT NULL`);
+      }
+      if (!orderColumns.includes('external_order_id')) {
+        db.exec(`ALTER TABLE orders ADD COLUMN external_order_id TEXT DEFAULT NULL`);
+      }
+    },
+  },
   {
     // Fork-only guard: the fork's date-stamped schema versions (2026082801,
-    // 2026082802) were released ABOVE upstream's sequential v76 (refunds) and
-    // v77 (weighted products). The v3.5.0 merge therefore runs 76/77 *after*
-    // those numbers in the registry, and runMigrations() skips any migration
-    // whose version is <= the install's current user_version. An existing
-    // fork install sitting at 2026082802 would otherwise never create the
-    // refunds/refund_idempotency tables or the weighted-product columns —
-    // and the current>target guard would additionally reject the whole DB as
-    // "newer" than v77. This guard re-applies the exact same guarded DDL
-    // idempotently so fresh installs no-op and 2026082802 installs converge.
+    // 2026082802) were released ABOVE upstream's sequential v76 (refunds),
+    // v77 (weighted products), and v78 (online order reference). Existing fork
+    // installs sit at 2026082802, so runMigrations() skips any sequential
+    // migration whose version is <= that, and the current>target guard would
+    // reject the whole DB as "newer" than a sequential target. This guard
+    // re-applies the exact same guarded DDL idempotently so fresh installs
+    // no-op and 2026082802 installs converge to the full schema.
     version: 2026090201,
     name: 'ensure_refunds_and_weighted_schema',
     up: () => {
@@ -4243,6 +4257,22 @@ export const MIGRATIONS: { version: number; name: string; up: () => void }[] = [
       }
       if (!hasColumn('weight_precision')) {
         db.exec(`ALTER TABLE products ADD COLUMN weight_precision INTEGER NOT NULL DEFAULT 3 CHECK (weight_precision BETWEEN 0 AND 4)`);
+      }
+    },
+  },
+  {
+    // Fork-only guard: online-order columns (v78) would also be skipped by
+    // existing fork installs at 2026082802, which would then break the order
+    // INSERT (unknown columns). Re-apply v78's guarded DDL idempotently.
+    version: 2026090202,
+    name: 'ensure_online_order_reference',
+    up: () => {
+      const orderColumns = getColumns(db, 'orders');
+      if (!orderColumns.includes('online_platform')) {
+        db.exec(`ALTER TABLE orders ADD COLUMN online_platform TEXT DEFAULT NULL`);
+      }
+      if (!orderColumns.includes('external_order_id')) {
+        db.exec(`ALTER TABLE orders ADD COLUMN external_order_id TEXT DEFAULT NULL`);
       }
     },
   },

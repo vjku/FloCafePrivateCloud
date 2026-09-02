@@ -121,6 +121,32 @@ function printReprintBanner(
     .align('left');
 }
 
+function printOnlineOrderBanner(
+  enc: ReceiptPrinterEncoder,
+  bannerLabel: string,
+  platform: string,
+  externalOrderId: string,
+  warnings: PrintWarning[] | undefined,
+  arabicShaping: boolean,
+  cols: number,
+): void {
+  enc
+    .align('center')
+    .bold(true)
+    .width(2)
+    .height(2);
+  safePrinterText(enc, `** ${bannerLabel} **`, warnings, false, arabicShaping, Math.floor(cols / 2));
+  enc
+    .width(1)
+    .height(1)
+    .newline();
+  if (platform) safePrinterText(enc, platform, warnings, false, arabicShaping, cols).newline();
+  if (externalOrderId) safePrinterText(enc, `#${externalOrderId}`, warnings, false, arabicShaping, cols).newline();
+  enc
+    .bold(false)
+    .align('left');
+}
+
 function printPoweredByFooter(enc: ReceiptPrinterEncoder): void {
   enc
     .align('center')
@@ -389,6 +415,17 @@ export function buildClassicReceiptBytes(
 
   enc.initialize();
   if (messages?.reprintBanner) printReprintBanner(enc, labelOf(messages.reprintBanner), warnings, arabicShaping, cols);
+  if (messages?.onlineOrderBanner) {
+    printOnlineOrderBanner(
+      enc,
+      labelOf(messages.onlineOrderBanner.label),
+      messages.onlineOrderBanner.platform.text,
+      messages.onlineOrderBanner.externalOrderId.text,
+      warnings,
+      arabicShaping,
+      cols,
+    );
+  }
 
   // Business header (document block).
   if (header?.name) {
@@ -579,6 +616,17 @@ export function buildCompactReceiptBytes(
 
   enc.initialize();
   if (messages?.reprintBanner) printReprintBanner(enc, labelOf(messages.reprintBanner), warnings, arabicShaping, cols);
+  if (messages?.onlineOrderBanner) {
+    printOnlineOrderBanner(
+      enc,
+      labelOf(messages.onlineOrderBanner.label),
+      messages.onlineOrderBanner.platform.text,
+      messages.onlineOrderBanner.externalOrderId.text,
+      warnings,
+      arabicShaping,
+      cols,
+    );
+  }
 
   // Header (document business-header block)
   if (header?.name) {

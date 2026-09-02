@@ -2,6 +2,20 @@
 
 All notable changes to Flo Cafe are documented here. Dates are release dates, not commit dates. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [3.5.1] - 2026-09-02
+
+### Added
+- **i18n:** Added Tagalog (Filipino) and Turkish language support with complete translation parity; merged upstream helpers keep every locale aligned with English.
+- **Orders:** Added an online order type so `online` orders carry the platform name (`online_platform`) and the platform's own order ID (`external_order_id`), which are shown on kitchen tickets and receipts for cross-referencing back to the source system.
+- **POS:** Added a top-bar sync status that reflects live product/price data freshness for multi-terminal use.
+
+### Changed
+- **Dependencies:** Bumped `browserslist` and `postcss-selector-parser` for the frontend build.
+
+### Fixed
+- **POS:** Fixed the discount keypad input so on-screen entry works correctly with the interactive discount flow.
+- **Service worker:** Failed asset fetches now resolve with valid offline-shell responses so the app stays functional without connectivity.
+
 ## [3.5.0] - 2026-09-01
 
 ### Added

@@ -37,6 +37,20 @@ export const LANGUAGES = {
     selectable: true,
     load: () => import('./messages/es.json'),
   },
+  tr: {
+    locale: 'tr-TR',
+    nativeName: 'Türkçe',
+    direction: 'ltr',
+    selectable: true,
+    load: () => import('./messages/tr.json'),
+  },
+  fil: {
+    locale: 'fil-PH',
+    nativeName: 'Filipino',
+    direction: 'ltr',
+    selectable: true,
+    load: () => import('./messages/fil.json'),
+  },
   fr: {
     locale: 'fr-FR',
     nativeName: 'Français',

@@ -275,6 +275,26 @@ export default function POSPage() {
   };
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    if (window.electronAPI?.getWindowState) {
+      window.electronAPI
+        .getWindowState()
+        .then((state) => {
+          if (state && typeof state === 'object' && 'isMaximized' in state) {
+            setFullscreen(Boolean(state.isMaximized || state.isFullScreen));
+          }
+        })
+        .catch(() => {});
+
+      if (window.electronAPI.onWindowStateChanged) {
+        return window.electronAPI.onWindowStateChanged((state) => {
+          setFullscreen(Boolean(state?.isMaximized || state?.isFullScreen));
+        });
+      }
+      return;
+    }
+
     const syncFullscreen = () => setFullscreen(document.fullscreenElement != null);
     syncFullscreen();
     document.addEventListener('fullscreenchange', syncFullscreen);
@@ -282,6 +302,17 @@ export default function POSPage() {
   }, []);
 
   const toggleFullscreen = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+
+    if (window.electronAPI?.windowAction) {
+      try {
+        await window.electronAPI.windowAction('toggle-maximize');
+      } catch {
+        toast.error(t('fullscreenUnavailable'));
+      }
+      return;
+    }
+
     if (typeof document === 'undefined') return;
     try {
       if (document.fullscreenElement) {
@@ -510,6 +541,8 @@ export default function POSPage() {
           type: cart.orderType,
           guest_count: cart.guestCount,
           special_instructions: cart.orderNotes || undefined,
+          online_platform: cart.orderType === 'online' ? cart.onlinePlatform || undefined : undefined,
+          external_order_id: cart.orderType === 'online' ? cart.externalOrderId || undefined : undefined,
           items: cart.items.map((item) => ({
             product_id: item.product.id,
             quantity: item.quantity,
@@ -584,6 +617,8 @@ export default function POSPage() {
       type: cart.orderType,
       guest_count: cart.guestCount,
       special_instructions: cart.orderNotes,
+      online_platform: cart.orderType === 'online' ? cart.onlinePlatform : undefined,
+      external_order_id: cart.orderType === 'online' ? cart.externalOrderId : undefined,
       items: orderItems,
     });
     const storedAttempt = readPrepaidAttempt();
@@ -664,6 +699,8 @@ export default function POSPage() {
           type: cart.orderType,
           guest_count: cart.guestCount,
           special_instructions: cart.orderNotes || undefined,
+          online_platform: cart.orderType === 'online' ? cart.onlinePlatform || undefined : undefined,
+          external_order_id: cart.orderType === 'online' ? cart.externalOrderId || undefined : undefined,
           items: orderItems,
         }, { headers: { 'Idempotency-Key': attempt.orderIdempotencyKey } });
         orderData = data;
