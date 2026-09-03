@@ -24,6 +24,9 @@ export interface Tenant {
   status: string;
   role?: string;
   language?: Language;
+  /** Raw backend-authoritative print policies included in auth bootstrap. */
+  bill_language_policy?: string | null;
+  kot_language_policy?: string | null;
   // Iran locale display preferences (Batch G, Refs #241). Display-only —
   // stored amounts stay in the tenant currency (IRR/Rial for Iran).
   currency_display?: CurrencyDisplay;
@@ -220,8 +223,12 @@ export interface Bill {
   tax_breakdown?: { title: string; rate: number; amount: number }[] | null;
   tax_snapshot?: TaxSnapshot[] | TaxSnapshot | null;
   order?: Order;
-  /** Loyalty points credited for this bill (sum of loyalty_ledger credits). Only populated by /orders endpoints. */
+  /** Loyalty points credited for this bill when supplied by a bill/order API. */
   points_earned?: number;
+  /** Loyalty points debited for this bill when supplied by a bill/order API. */
+  points_redeemed?: number;
+  /** Running loyalty balance when supplied by a print/order API. */
+  points_balance?: number | null;
 }
 
 export interface TaxSnapshot {

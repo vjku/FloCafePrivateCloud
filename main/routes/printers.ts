@@ -9,6 +9,7 @@ import {
   resolveReceiptLanguages,
   type KotLanguagePolicy,
   type ReceiptLanguagePolicy,
+  isKotItemPending,
 } from '../../shared/print';
 import { getSupportedPrinterProfiles, resolvePrinterProfile } from '../printers/profiles';
 import { requireRole } from '../middleware/security';
@@ -307,7 +308,12 @@ router.post('/:id/test', requireRole(...ROLE_ACCESS.ownerManager), asyncHandler(
     if (!printer) return res.status(404).json({ error: 'Printer not found' });
 
     const profile = resolvePrinterProfile(printer);
-    const testData = buildTestPage(printer.paper_width || profile.defaultPaperWidth, profile.cutMode, tenantLanguage(db));
+    const testData = buildTestPage(
+      printer.paper_width || profile.defaultPaperWidth,
+      profile.cutMode,
+      tenantLanguage(db),
+      tenantSettingValue(db, 'timezone') || 'Asia/Kolkata',
+    );
     let result: { ok: boolean; detail?: string } = { ok: false };
 
     switch (printer.connection_type) {
@@ -421,9 +427,9 @@ router.post('/print-bill', requireRole(...ROLE_ACCESS.ownerManagerCashier), asyn
       ).get(bill.id) as { total: number };
       pointsRedeemed = redeemed.total;
 
-      if (settings.loyalty_enabled === 'true') {
+      if (['true', '1'].includes(settings.loyalty_enabled || '')) {
         const credits = db.prepare(
-          `SELECT COALESCE(SUM(amount), 0) as total FROM loyalty_ledger WHERE customer_id = ? AND type = 'credit' AND (expires_at IS NULL OR expires_at > datetime('now'))`
+          `SELECT COALESCE(SUM(amount), 0) as total FROM loyalty_ledger WHERE customer_id = ? AND type = 'credit'`
         ).get(bill.customer_id) as { total: number };
         const debits = db.prepare(
           `SELECT COALESCE(SUM(amount), 0) as total FROM loyalty_ledger WHERE customer_id = ? AND type = 'debit'`
@@ -452,6 +458,7 @@ router.post('/print-bill', requireRole(...ROLE_ACCESS.ownerManagerCashier), asyn
       points_redeemed: pointsRedeemed,
       points_balance: pointsBalance,
       trim_decimals: settings.printer_trim_decimals === 'true',
+      timezone: settings.timezone || 'Asia/Kolkata',
       show_name: settings.bill_show_name !== 'false',
       show_address: settings.bill_show_address !== 'false',
       show_phone: settings.bill_show_phone !== 'false',
@@ -604,12 +611,17 @@ router.post('/print-kot', requireRole(...ROLE_ACCESS.ownerManagerCashier), async
     // Fetch order items from database
     const orderItems: any[] = getEffectiveOrderItems(db, orderId);
 
-    // Fetch table info if available
+    // Fetch table/customer info if available so backend KOT metadata matches
+    // the browser and WebUSB paths.
     if (order.table_id) {
       const table: any = db.prepare('SELECT * FROM tables WHERE id = ?').get(order.table_id);
       if (table) {
         order.table = { name: table.number };
       }
+    }
+    if (order.customer_id) {
+      const customer = db.prepare('SELECT name FROM customers WHERE id = ?').get(order.customer_id) as { name: string } | null;
+      if (customer) order.customer = { name: customer.name };
     }
 
     // A stationName override prints one ticket. Item overrides without an
@@ -620,7 +632,7 @@ router.post('/print-kot', requireRole(...ROLE_ACCESS.ownerManagerCashier), async
     const warnings: NonNullable<Awaited<ReturnType<typeof printKOTDetailed>>['warnings']> = [];
     let failure: Awaited<ReturnType<typeof printKOTDetailed>> | null = null;
     const kotSourceItems = (Array.isArray(items) ? items : orderItems)
-      .filter((item: any) => item?.status !== 'served' && item?.status !== 'ready');
+      .filter((item: any) => isKotItemPending(item?.status));
 
     if (stationName) {
       const station = stationName || 'Kitchen';

@@ -246,6 +246,16 @@ browser receipt labels as well as thermal labels. An additional receipt
 language may still be loaded and carried by the document for the future
 bilingual renderer work above.
 
+Authenticated POS bootstrap applies the tenant's stored receipt and KOT
+policies and warms every resolved print locale before releasing the dashboard.
+For a selected tenant, this happens during single-tenant login, session
+restore, and tenant selection, so the selected print language is available
+before the first print without visiting Settings.
+If a packaged locale bundle fails to load, bootstrap records the failed
+language and surfaces an actionable operator error. A later print retry may
+fall back to English only with an explicit print warning; the print-test HTML
+download is withheld when its required locale cannot be loaded.
+
 Policy payloads are untrusted input: `parsePrintLanguagePolicy` /
 `parseKotLanguagePolicy` reject unknown top-level keys and validate the relevant
 nested `primary`/`additional` values, but extra fields inside a primary
@@ -433,8 +443,10 @@ selection and `visible` settings; that is merchant configuration, not a silent
 renderer omission. The legacy raw WebUSB encoders described above retain their
 own warning behavior and do not inherit the `PrintDocument` guarantees. The
 tax-bill path still refuses before WebUSB transport when a financial row is
-unsupported; its raw date uses the configured country locale when
-representable and an ASCII-safe fallback otherwise.
+unsupported; its raw date uses the configured country locale and tenant
+timezone when representable, with an ASCII-safe fallback otherwise. Receipt,
+KOT, compliance, and print-test timestamps use the tenant timezone rather than
+the host machine timezone.
 Warnings surface to the user through print results and toast notifications
 ([`frontend/src/lib/printer/warnings-toast.ts`](../frontend/src/lib/printer/warnings-toast.ts)); financial refusal warnings are shown before transport. Dispatch results use
 `classifyPrintFailure` in [`main/printers/thermal.ts`](../main/printers/thermal.ts) for stable, privacy-safe failure
@@ -470,6 +482,7 @@ directly and [`main/printers/thermal.ts`](../main/printers/thermal.ts) owns that
 | --- | --- | --- |
 | Kernel units | `npm run test:print-kernel` | policy resolution/validation, direction, bilingual fit, settings glue ([`tests/print-kernel.test.ts`](../tests/print-kernel.test.ts), [`tests/kernel-purity.test.ts`](../tests/kernel-purity.test.ts), [`tests/print-language-settings.test.ts`](../tests/print-language-settings.test.ts)) |
 | Labels | `npm run test:print-labels` | generated-table selection, English fallback, all eight locale Phase 3 cross-path print regressions, generator drift (`--check`) ([`tests/print-labels.test.ts`](../tests/print-labels.test.ts), [`tests/phase3-print-regressions.test.ts`](../tests/phase3-print-regressions.test.ts), [`scripts/generate-print-labels.cjs`](../scripts/generate-print-labels.cjs)) |
+| Locale loading | `npm run test:phase6-locale-loading` | bootstrap policy application plus browser and WebUSB receipt loading for every registered locale ([`tests/phase6-locale-loading.test.ts`](../tests/phase6-locale-loading.test.ts)) |
 | Document model | `npm run test:print-document` | block construction, document builders, bilingual pairs, direction annotations, purity ([`tests/print-document.test.ts`](../tests/print-document.test.ts)) |
 | Parity harness | `npm run test:print-parity` | cross-renderer semantic parity + byte-exact migration oracle ([`tests/print-parity.test.ts`](../tests/print-parity.test.ts)) |
 | Merchant templates | `npm run test:merchant-print-templates` | kernel validation, apply semantics, CRUD lifecycle, render path ([`tests/merchant-print-templates.test.ts`](../tests/merchant-print-templates.test.ts)) |
@@ -480,10 +493,13 @@ Parity harness usage and fixture matrix ([`tests/print-parity.test.ts`](../tests
 - **Semantic assertions** (content present / explicit warning recorded), not
   byte snapshots, for cross-renderer checks; amounts compared after stripping
   grouping separators so `en-IN` and `en-US` styles both pass.
-- **Byte-exact oracle**: every migrated backend surface (classic, compact,
-  KOT) must reproduce its frozen pre-migration output BYTE FOR BYTE at every
-  tested width, including skip rules and reprint banners
+- **Byte-exact oracle**: migrated backend receipt surfaces (classic and
+  compact) must reproduce their frozen pre-migration output BYTE FOR BYTE at
+  every tested width, including skip rules and reprint banners
   ([`tests/helpers/legacy-thermal-oracle.ts`](../tests/helpers/legacy-thermal-oracle.ts)).
+  KOT parity is semantic because the current contract normalizes order
+  metadata, add-on quantities, special-instruction markers, and served/ready
+  filtering across its renderers.
 - **Width coverage expectations**: backend ESC/POS at 32/42/48 columns;
   WebUSB at 58 mm and 80 mm; browser HTML at `thermal58`/`thermal80`;
   bilingual fit strategies evaluated across 32–48 columns

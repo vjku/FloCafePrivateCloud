@@ -4,7 +4,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { exec, execFile } from 'child_process';
 import { promisify } from 'util';
-import { getDatabase, parseDbTimestamp } from '../db';
+import { getDatabase, getSettingValue, parseDbTimestamp } from '../db';
 import { PrinterCutMode, resolvePrinterProfile, matchSupportedPrinterProfile, SupportedPrinterProfile } from './profiles';
 import { getCountryByCode, getCurrencyFractionDigits } from '../countries';
 import { resolveTaxComponents } from '../services/tax-components';
@@ -645,7 +645,8 @@ export async function printKOT(order: any, items: any[], stationName: string, us
     const db = getDatabase();
     const biz = db.prepare('SELECT * FROM settings LIMIT 1').get() as any;
     const locale = biz?.country ? getCountryByCode(biz.country)?.locale ?? 'en-US' : 'en-US';
-    const tzOptions = biz?.timezone ? { timeZone: biz.timezone } : undefined;
+    const timezone = getSettingValue('timezone') || 'Asia/Kolkata';
+    const tzOptions = { timeZone: timezone };
 
     const warnings: PrintWarning[] = [];
     // A request-body override (from the renderer's global shaping setting)
@@ -1331,7 +1332,8 @@ export function itemRows(item: any, nameLen: number, amtLen: number, cols: numbe
 
 export function addonRows(addon: any, nameLen: number, amtLen: number, cols: number, prefix: string, locale: string = 'en-US', trimDecimals: boolean = false, language: string = 'en', fractionDigits: number = 2): string[] {
   const addonName = language === 'de' ? normalizeGermanThermalText(addon.name) : addon.name;
-  const label = truncate('  + ' + addonName, nameLen).padEnd(nameLen);
+  const quantity = typeof addon.quantity === 'number' && addon.quantity > 1 ? ` x${addon.quantity}` : '';
+  const label = truncate('  + ' + addonName + quantity, nameLen).padEnd(nameLen);
   if (!addon.price) return [label + ' '.repeat(Math.max(0, cols - label.length))];
   const price = formatCurrency(addon.price, prefix, locale, trimDecimals, fractionDigits);
   const inlineWidth = Math.max(1, cols - label.length - 1);
@@ -1489,7 +1491,7 @@ export function formatKOT(order: any, items: any[], stationName: string, cols: n
   return result.data;
 }
 
-export function buildTestPage(paperWidth: string = '80mm', cutMode: PrinterCutMode = 'full', language?: string): Buffer {
+export function buildTestPage(paperWidth: string = '80mm', cutMode: PrinterCutMode = 'full', language?: string, timezone?: string): Buffer {
   const width = columnsForPaperWidth(paperWidth) || 48;
   const lang = normalizePrintLanguage(language);
   const label = (concept: PrintConceptId): string => lang === 'de' ? normalizeGermanThermalText(printLabel(lang, concept)) : printLabel(lang, concept);
@@ -1509,7 +1511,7 @@ export function buildTestPage(paperWidth: string = '80mm', cutMode: PrinterCutMo
     ruler,
     edgeProbe,
     bar,
-    `${label('print.time')}: ${new Date().toLocaleString('en-US-u-nu-latn')}`,
+    `${label('print.time')}: ${new Date().toLocaleString('en-US-u-nu-latn', timezone ? { timeZone: timezone } : undefined)}`,
     '',
     bar,
     '{CENTER}' + label('print.test.success') + '{/CENTER}',
