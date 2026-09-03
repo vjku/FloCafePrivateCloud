@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { getDatabase, now, attachEffectiveAddons, isKotPrintingEnabled, parseItemJson } from '../db';
 import { getOrderWithItems } from './bills';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'node:crypto';
 import { printViaNetwork, printViaUSB, buildTestPage, printReceiptDetailed, printKOTDetailed, detectConnectedPrinters, prepareReceipt, escPosToText } from '../printers/thermal';
 import { BILL_LANGUAGE_POLICY_KEY, KOT_LANGUAGE_POLICY_KEY, parseStoredLanguagePolicy } from '../lib/print-language-settings';
 import {
@@ -174,7 +174,7 @@ router.post('/', requireRole(...ROLE_ACCESS.ownerManager), (req: Request, res: R
     }
 
     const db = getDatabase();
-    const id = uuidv4();
+    const id = randomUUID();
 
     db.transaction(() => {
       const existingPrinters = db.prepare('SELECT COUNT(*) as count FROM printers').get() as any;
@@ -490,12 +490,19 @@ router.post('/print-bill', requireRole(...ROLE_ACCESS.ownerManagerCashier), asyn
     // Use existing printReceipt function with template support
     console.log('[Print Bill] Calling printReceipt...');
     const result = await printReceiptDetailed(order, bill, business, billTemplate || 'classic', useUnicode, isReprint, getHttpRequestSignal(req), arabicShapingOverride, receiptLanguages.primary, receiptLanguages.additional);
-    console.log('[Print Bill] Print completed', result);
+    console.log('[Print Bill] Print completed', {
+      ok: result.ok,
+      code: result.code,
+      correlation_id: result.correlationId,
+      stage: result.stage,
+      failure_class: result.failureClass,
+      warning_count: result.warnings?.length || 0,
+    });
 
     if (result.ok) {
       res.json({ success: true, warnings: result.warnings || [] });
     } else {
-      res.status(502).json({ error: result.detail || 'Print failed. Check printer connection and settings.', detail: result.detail, failure_class: result.failureClass, code: result.code, correlation_id: result.correlationId, stage: result.stage });
+      res.status(502).json({ error: result.detail || 'Print failed. Check printer connection and settings.', detail: result.detail, failure_class: result.failureClass, code: result.code, correlation_id: result.correlationId, stage: result.stage, warnings: result.warnings || [] });
     }
   } catch (error: any) {
     console.error('[Print Bill] Error:', error);

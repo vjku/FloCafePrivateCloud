@@ -16,7 +16,7 @@
 import ReceiptPrinterEncoder from '@point-of-sale/receipt-printer-encoder';
 import type { Bill, Tenant } from '@/lib/types';
 import { normalizeCurrencyToAscii, normalizeGermanThermalText, padCurrencyPrefix } from './unicode';
-import { getCountryByCode, getCurrencySymbol } from '@/lib/countries';
+import { getCountryByCode, getCurrencyFractionDigits, getCurrencySymbol } from '@/lib/countries';
 import { formatDate } from './format-date';
 import { formatTaxComponentLabel, resolveTaxComponents } from './tax-components';
 import { safePrinterText as writeSafePrinterText, type PrintWarning } from './warnings';
@@ -117,7 +117,7 @@ function getSafeLatnLocale(locale: string | undefined): string {
   return `${locale}-u-nu-latn`;
 }
 
-function safePrinterTextForLanguage(language: string) {
+function safePrinterTextForLanguage(language: string, useUnicode: boolean) {
   return <T extends { text(value: string): T }>(
     enc: T,
     value: string,
@@ -127,7 +127,7 @@ function safePrinterTextForLanguage(language: string) {
     centerCols?: number,
     maxCols?: number,
     _language?: string,
-  ): T => writeSafePrinterText(enc, value, warnings, isStoreName, arabicShaping, centerCols, maxCols, language);
+  ): T => writeSafePrinterText(enc, value, warnings, isStoreName, arabicShaping, centerCols, maxCols, language, false, useUnicode);
 }
 
 export function buildTaxBillBytes(
@@ -156,7 +156,7 @@ export function buildTaxBillBytes(
   } = opts;
   const labelFor = (key: string): string => printLabelResolver(key, language);
   const cols = CHARS[paperWidth];
-  const safePrinterText = safePrinterTextForLanguage(language);
+  const safePrinterText = safePrinterTextForLanguage(language, useUnicode);
   const padRow = (left: string, right: string, _columns?: number): string => padRowForLanguage(left, right, cols, language);
   const truncate = (text: string, max: number): string => truncateForLanguage(text, max, language);
   const rawCurrency = getCurrencySymbol(tenant.currency ?? 'INR', getCountryByCode(tenant.country ?? 'IN')?.locale);
@@ -338,10 +338,12 @@ function truncateForLanguage(str: string, max: number, language?: string): strin
 function formatAmount(value: number | string, currency: string, locale: string, trimDecimals: boolean = false, rawEscPos: boolean = true): string {
   const amount = Number(value);
   const numeric = Number.isFinite(amount) ? amount : 0;
-  const hasDecimals = Math.round(numeric * 100) % 100 !== 0;
+  const decimals = getCurrencyFractionDigits(currency);
+  const factor = 10 ** decimals;
+  const hasDecimals = decimals > 0 && Math.round(numeric * factor) % factor !== 0;
   const formattedNum = numeric.toLocaleString(locale, {
-    minimumFractionDigits: trimDecimals && !hasDecimals ? 0 : 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: trimDecimals && !hasDecimals ? 0 : decimals,
+    maximumFractionDigits: decimals,
   });
   const normalizedNum = rawEscPos ? formattedNum.replace(/[\u00A0\u202F]/g, ' ') : formattedNum;
   return `${currency}${normalizedNum}`;

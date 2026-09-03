@@ -204,6 +204,7 @@
   "dashboard": {
     "aov": "Valor Médio do Pedido",
     "avgPrepTime": "Tempo Médio de Preparo",
+    "avgTableTurn": "Rotatividade Média de Mesa",
     "billsCollected": "Contas Recebidas",
     "busiestDay": "Dia de Maior Movimento",
     "busiestHour": "Hora de Maior Movimento",
@@ -508,6 +509,7 @@
     "deliveryAddress": "Endereço de entrega",
     "discount": "Desconto",
     "discountInvalid": "Digite um valor de desconto válido",
+    "fixedDiscountMinimum": "Descontos fixos devem ser de pelo menos 1 unidade",
     "discountReasonPlaceholder": "Motivo (opcional)",
     "discountRemoved": "Desconto removido",
     "discountUpdated": "Desconto atualizado",

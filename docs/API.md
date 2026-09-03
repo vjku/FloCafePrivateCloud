@@ -339,7 +339,7 @@ Create new order.
 
 **Headers:** `Authorization: Bearer <token>`
 
-Order item `addons` reference catalog add-ons by `id`. Each add-on must be active and linked to the product's add-on group. Add-on name and price are resolved from the catalog (client-supplied names and prices are ignored). Quantity defaults to `1` when omitted and must be a positive integer.
+Order item `addons` reference catalog add-ons by `id`. Each add-on must be active and linked to the product's add-on group. Add-on name and price are resolved from the catalog (client-supplied names and prices are ignored). Quantity defaults to `1` when omitted and must be a positive integer. `service_charge` is an optional explicit non-negative per-order amount validated and persisted by the server; omitted/null means `0`. Settings' service-charge category selects tax treatment only - it does not define an amount or rate, and no automatic service charge is applied.
 
 **Request:**
 ```json
@@ -347,6 +347,7 @@ Order item `addons` reference catalog add-ons by `id`. Each add-on must be activ
   "type": "dine_in",
   "table_id": "table-1",
   "customer_id": "cust-1",
+  "service_charge": 0,
   "items": [
     {
       "product_id": "prod-1",
@@ -835,6 +836,15 @@ Earn loyalty points.
 
 ---
 
+## Refund amount storage
+
+`refunds.amount_cents` stores integer minor units for all refunds:
+- For zero-decimal currencies (e.g. JPY, KRW), `amount_cents` stores whole currency units (factor 1).
+- For standard two-decimal currencies (e.g. USD, EUR, INR), `amount_cents` stores cents (factor 100).
+- For three-decimal currencies (e.g. KWD, BHD, OMR), `amount_cents` stores integer minor units (factor 1000).
+
+Historical FloCafe databases operated exclusively under two-decimal currencies, where stored cents identically represent integer minor units (factor 100). Tenant business currency is configured during setup and governs store-wide order, billing, and settlement records; currency changes must not occur on active stores with open or unclosed financial periods. No database schema migration is required.
+
 ## Reports
 
 ### GET `/api/reports/sales`
@@ -1049,6 +1059,12 @@ Print the bill identified by `billId` or the bill associated with `orderId`.
 ```
 
 Pass `preview: true` to generate receipt preview text, base64 ESC/POS payload, and column metrics without dispatching to a physical printer. If no hardware printer is configured, preview mode falls back to default 80 mm formatting.
+
+Successful print responses include `{ "success": true, "warnings": [] }`. If
+receipt preparation finds unsupported financial text, the endpoint returns HTTP
+502 before transport with `stage: "prepare"`, `failure_class: "unsupported"`,
+and the financial warnings in `warnings`; dispatch failures use
+`stage: "dispatch"`. See [printing architecture warning semantics](printing-architecture.md#6-printer-capability-model--warning-semantics) for the warning contract.
 
 ### POST `/api/printers/print-kot`
 

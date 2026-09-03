@@ -23,6 +23,7 @@ import type { Bill, Tenant } from '@/lib/types';
 import toast from 'react-hot-toast';
 import {
   getCountryByCode,
+  getCurrencyFractionDigits,
   formatCurrencyForTenant,
   formatNumberForTenant,
   formatDateForTenant,
@@ -311,6 +312,7 @@ export function generateBillHtml(
     rate: printLabelResolver('receipt.rate', lang),
     totalTax: surfaceLabel(totals?.tax?.label, 'pos.tax', 'receipt.totalTax', lang),
     deliveryCharge: surfaceLabel(totals?.deliveryCharge?.label, 'pos.delivery', 'receipt.deliveryCharge', lang),
+    packagingCharge: documentLabel(totals?.packagingCharge?.label, 'pos.packaging', lang),
     grandTotal: surfaceLabel(totals?.grandTotal?.label, 'print.grandTotal', 'receipt.grandTotal', lang),
     taxDetails: printLabelResolver('receipt.taxDetails', lang),
     paymentsHeader: printLabelResolver('receipt.payments', lang),
@@ -419,6 +421,7 @@ export function generateBillHtml(
       ${totals.tax ? `<tr><td>${escapeHtml(L.totalTax)}</td><td class="text-end num">${fmtAmount(totals.tax.amount)}</td></tr>` : ''}
       ${totals.serviceCharge ? `<tr><td>${escapeHtml(totals.serviceCharge.label.primary)}</td><td class="text-end num">${fmtAmount(totals.serviceCharge.amount)}</td></tr>` : ''}
       ${totals.deliveryCharge ? `<tr><td>${escapeHtml(L.deliveryCharge)}</td><td class="text-end num">${fmtAmount(totals.deliveryCharge.amount)}</td></tr>` : ''}
+      ${totals.packagingCharge ? `<tr><td>${escapeHtml(L.packagingCharge)}</td><td class="text-end num">${fmtAmount(totals.packagingCharge.amount)}</td></tr>` : ''}
       <tr class="total-row"><td><strong>${escapeHtml(L.grandTotal)}</strong></td><td class="text-end num"><strong>${fmtAmount(totals.grandTotal.amount)}</strong></td></tr>
       ` : ''}
     </table>
@@ -554,7 +557,9 @@ function getPaperStyles(size: PaperSize): string {
 function formatAmount(value: number, tenant: ReceiptTenant, trimDecimals = false): string {
   const numeric = Number.isFinite(Number(value)) ? Number(value) : 0;
   const prefs = { currencyDisplay: tenant.currency_display, digits: tenant.number_digits };
-  const hasDecimals = Math.round(numeric * 100) % 100 !== 0;
+  const fractionDigits = getCurrencyFractionDigits(tenant.currency ?? 'INR');
+  const factor = 10 ** fractionDigits;
+  const hasDecimals = fractionDigits > 0 && Math.round(numeric * factor) % factor !== 0;
   const isToman =
     (tenant.currency === 'IRR' || (!tenant.currency && tenant.country === 'IR')) &&
     (tenant.currency_display === 'toman' || tenant.currency_display === 'toman_short');

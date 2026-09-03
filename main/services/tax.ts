@@ -1,12 +1,13 @@
 import Decimal from 'decimal.js';
 import { getDatabase, getSettingValue } from '../db';
 import { getBundledCountryPack } from '../tax-packs/bundled';
-import { getCountryByCode, type TaxIdFormat } from '../countries';
+import { getCountryByCode, getCurrencyFractionDigits, getCurrencyMinorUnitFactor, type TaxIdFormat } from '../countries';
 
 interface TenantInfo {
   country: string;
   business_type: string;
   state_code: string;
+  currency?: string;
   // Read from settings once per request by the caller (main/routes/orders.ts)
   // and passed in explicitly, rather than read here via getSettingValue —
   // calculateItemTax's other inputs are all explicit parameters, and isolated
@@ -239,6 +240,7 @@ export function calculateItemTax(
     try {
       calculation = TaxEngine.calculate({
         pack,
+        currency: tenant.currency,
         country: tenant.country,
         businessType: tenant.business_type,
         storeStateCode: tenant.state_code,
@@ -342,20 +344,31 @@ export function getConfiguredChargeTaxCategories(
   }
 }
 
+export function normalizeChargeAmount(value: unknown, kind: ChargeTaxKind): number {
+  if (value === undefined || value === null || value === '') return 0;
+  if (typeof value !== 'number' && typeof value !== 'string') {
+    throw Object.assign(new Error(`${kind} charge must be a non-negative finite amount`), { statusCode: 400 });
+  }
+  try {
+    const amount = new Decimal(value as Decimal.Value);
+    if (!amount.isFinite() || amount.isNegative()) {
+      throw new Error(`${kind} charge must be a non-negative finite amount`);
+    }
+    const numericAmount = amount.toNumber();
+    if (!Number.isFinite(numericAmount)) {
+      throw new Error(`${kind} charge must be a non-negative finite amount`);
+    }
+    return numericAmount;
+  } catch (error: any) {
+    throw Object.assign(new Error(error.message || `${kind} charge is invalid`), { statusCode: 400 });
+  }
+}
+
 function chargeAmount(context: ChargeTaxContext, kind: ChargeTaxKind): Decimal {
   const amountKey: keyof ChargeTaxContext = kind === 'service_charge'
     ? 'service_charge'
     : `${kind}_charge`;
-  const raw = context[amountKey] ?? 0;
-  try {
-    const amount = new Decimal(raw as Decimal.Value);
-    if (!amount.isFinite() || amount.isNegative()) {
-      throw new Error(`${kind} charge must be a non-negative finite amount`);
-    }
-    return amount;
-  } catch (error: any) {
-    throw Object.assign(new Error(error.message || `${kind} charge is invalid`), { statusCode: 400 });
-  }
+  return new Decimal(normalizeChargeAmount(context[amountKey], kind));
 }
 
 function chargeCategoryId(context: ChargeTaxContext, kind: ChargeTaxKind): string | null {
@@ -386,6 +399,7 @@ export function calculateConfiguredChargeTaxes(
     try {
       calculation = TaxEngine.calculate({
         pack,
+        currency: tenant.currency,
         country: tenant.country,
         businessType: tenant.business_type,
         storeStateCode: tenant.state_code,
@@ -442,7 +456,7 @@ export function calculateConfiguredChargeTaxes(
   };
 }
 
-export function aggregateTaxBreakdown(itemBreakdowns: TaxBreakdown[][]): TaxBreakdown[] {
+export function aggregateTaxBreakdown(itemBreakdowns: TaxBreakdown[][], minorFactor = 100): TaxBreakdown[] {
   const merged: Record<string, TaxBreakdown> = {};
 
   for (const breakdown of itemBreakdowns) {
@@ -459,7 +473,7 @@ export function aggregateTaxBreakdown(itemBreakdowns: TaxBreakdown[][]): TaxBrea
 
   return Object.values(merged).map((line) => ({
     ...line,
-    amount: round(line.amount, 2),
+    amount: round(line.amount, Math.log10(minorFactor)),
   }));
 }
 
@@ -528,7 +542,9 @@ export function scaleTaxBreakdowns(
   breakdowns: any[],
   ratio: number,
   targetTaxAmount: number,
+  minorFactor = 100,
 ): any[] {
+  const decimals = Math.log10(minorFactor);
   const cloned = breakdowns.map((breakdown) => Array.isArray(breakdown)
     ? breakdown.map((component) => ({ ...component }))
     : breakdown);
@@ -545,7 +561,7 @@ export function scaleTaxBreakdowns(
     if (!Array.isArray(breakdown)) return;
     breakdown.forEach((component: any, innerIndex: number) => {
       const rawAmount = new Decimal(component.amount || 0).mul(scale);
-      const rounded = rawAmount.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+      const rounded = rawAmount.toDecimalPlaces(decimals, Decimal.ROUND_HALF_UP);
       entries.push({
         component,
         rounded,
@@ -558,12 +574,12 @@ export function scaleTaxBreakdowns(
 
   if (entries.length === 0) return cloned;
   const roundedTotal = entries.reduce((sum, entry) => sum.plus(entry.rounded), new Decimal(0));
-  const centsDelta = new Decimal(targetTaxAmount)
+  const minorDelta = new Decimal(targetTaxAmount)
     .minus(roundedTotal)
-    .mul(100)
+    .mul(minorFactor)
     .toDecimalPlaces(0, Decimal.ROUND_HALF_UP)
     .toNumber();
-  const direction = Math.sign(centsDelta);
+  const direction = Math.sign(minorDelta);
   const allocationOrder = [...entries].sort((left, right) => {
     const remainderOrder = direction >= 0
       ? right.remainder.comparedTo(left.remainder)
@@ -574,9 +590,9 @@ export function scaleTaxBreakdowns(
     return left.outerIndex - right.outerIndex || left.innerIndex - right.innerIndex;
   });
 
-  for (let index = 0; index < Math.abs(centsDelta); index++) {
+  for (let index = 0; index < Math.abs(minorDelta); index++) {
     const entry = allocationOrder[index % allocationOrder.length];
-    entry.rounded = entry.rounded.plus(direction * 0.01);
+    entry.rounded = entry.rounded.plus(direction / minorFactor);
   }
   for (const entry of entries) entry.component.amount = entry.rounded.toNumber();
   return cloned;
@@ -585,6 +601,7 @@ export function scaleTaxBreakdowns(
 export function scaleTaxSnapshots(
   snapshotsJson: (string | null | undefined)[],
   ratio: number,
+  minorFactor = 100,
 ): string[] {
   const snapshots = snapshotsJson.flatMap((raw) => {
     if (!raw) return [];
@@ -596,6 +613,7 @@ export function scaleTaxSnapshots(
     }
   });
   const scale = new Decimal(ratio);
+  const decimals = Math.log10(minorFactor);
   const entries: Array<{
     component: any;
     line: any;
@@ -609,7 +627,7 @@ export function scaleTaxSnapshots(
       if (!Array.isArray(line.components)) continue;
       for (const component of line.components) {
         const raw = new Decimal(component.amount || 0).mul(scale);
-        const rounded = raw.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+        const rounded = raw.toDecimalPlaces(decimals, Decimal.ROUND_HALF_UP);
         entries.push({ component, line, raw, rounded, remainder: raw.minus(rounded) });
       }
     }
@@ -619,11 +637,11 @@ export function scaleTaxSnapshots(
     const targetTaxAmount = entries.reduce(
       (sum, entry) => sum.plus(new Decimal(entry.component.amount || 0)),
       new Decimal(0),
-    ).mul(scale).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+    ).mul(scale).toDecimalPlaces(decimals, Decimal.ROUND_HALF_UP);
     const roundedTotal = entries.reduce((sum, entry) => sum.plus(entry.rounded), new Decimal(0));
     const centsDelta = targetTaxAmount
       .minus(roundedTotal)
-      .mul(100)
+      .mul(minorFactor)
       .toDecimalPlaces(0, Decimal.ROUND_HALF_UP)
       .toNumber();
     const direction = Math.sign(centsDelta);
@@ -638,10 +656,10 @@ export function scaleTaxSnapshots(
     });
     for (let index = 0; index < Math.abs(centsDelta); index += 1) {
       const entry = ordered[index % ordered.length];
-      entry.rounded = entry.rounded.plus(direction * 0.01);
+      entry.rounded = entry.rounded.plus(direction / minorFactor);
     }
     for (const entry of entries) {
-      entry.component.amount = entry.rounded.toFixed(2);
+      entry.component.amount = entry.rounded.toFixed(decimals);
       entry.component.roundingRemainder = entry.raw.minus(entry.rounded).toString();
     }
   }
@@ -650,7 +668,7 @@ export function scaleTaxSnapshots(
     for (const line of snapshot.lines) {
       const scaleValue = (value: unknown) => {
         if (typeof value !== 'string' && typeof value !== 'number') return value;
-        return new Decimal(value).mul(scale).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
+        return new Decimal(value).mul(scale).toDecimalPlaces(decimals, Decimal.ROUND_HALF_UP).toFixed(decimals);
       };
       line.grossAmount = scaleValue(line.grossAmount);
       line.taxableBase = scaleValue(line.taxableBase);
@@ -658,7 +676,7 @@ export function scaleTaxSnapshots(
         line.taxAmount = line.components.reduce(
           (sum: Decimal, component: any) => sum.plus(component.amount || 0),
           new Decimal(0),
-        ).toFixed(2);
+        ).toFixed(decimals);
       } else {
         line.taxAmount = scaleValue(line.taxAmount);
       }
@@ -674,15 +692,18 @@ export function combineItemAndChargeTaxes(args: {
   itemSnapshots: (string | null | undefined)[];
   itemTaxRatio: number;
   chargeTaxes: ChargeTaxSummary;
+  minorFactor?: number;
 }): TaxRollup {
   const scaledBreakdowns = scaleTaxBreakdowns(
     args.itemBreakdowns,
     args.itemTaxRatio,
     args.itemTaxAmount,
+    args.minorFactor,
   );
   const scaledSnapshots = scaleTaxSnapshots(
     args.itemSnapshots,
     args.itemTaxRatio,
+    args.minorFactor,
   );
   const nonEmptyBreakdowns = [
     ...scaledBreakdowns,
@@ -730,6 +751,12 @@ export async function calculateTaxPreview(req: any, res: any): Promise<void> {
       state_code: settings.state_code || '',
       taxes_enabled: settings.taxes_enabled === 'true',
     };
+    const currency = settings.currency && /^[A-Z]{3}$/.test(settings.currency)
+      ? settings.currency
+      : getCountryByCode(tenantInfo.country)?.currency || 'INR';
+    tenantInfo.currency = currency;
+    const decimals = getCurrencyFractionDigits(currency);
+    const minorFactor = getCurrencyMinorUnitFactor(currency);
 
     const customer = customer_id
       ? (db.prepare('SELECT * FROM customers WHERE id = ?').get(customer_id) as Customer | undefined)
@@ -773,12 +800,12 @@ export async function calculateTaxPreview(req: any, res: any): Promise<void> {
         product_name: product.name,
         quantity,
         unit_price: unitPrice,
-        subtotal: round(subtotal, 2),
+        subtotal: round(subtotal, decimals),
         discount_amount: itemDiscount,
         tax_amount: taxResult.tax_amount,
         tax_breakdown: taxResult.tax_breakdown,
         tax_type: taxResult.tax_type,
-        total: round(subtotal + (taxResult.tax_type === 'inclusive' ? 0 : taxResult.tax_amount), 2),
+        total: round(subtotal + (taxResult.tax_type === 'inclusive' ? 0 : taxResult.tax_amount), decimals),
       });
 
       if (taxResult.tax_breakdown) {
@@ -792,13 +819,9 @@ export async function calculateTaxPreview(req: any, res: any): Promise<void> {
       }
     }
 
-    const normalizeCharge = (value: unknown): number => {
-      const parsed = Number(value);
-      return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
-    };
-    const packaging = normalizeCharge(packaging_charge);
-    const delivery = normalizeCharge(delivery_charge);
-    const service = normalizeCharge(service_charge);
+    const packaging = normalizeChargeAmount(packaging_charge, 'packaging');
+    const delivery = normalizeChargeAmount(delivery_charge, 'delivery');
+    const service = normalizeChargeAmount(service_charge, 'service_charge');
 
     let discountAmount = new Decimal(0);
     if (discount_type !== undefined || discount_value !== undefined) {
@@ -821,7 +844,7 @@ export async function calculateTaxPreview(req: any, res: any): Promise<void> {
       } else {
         discountAmount = Decimal.min(new Decimal(parsedDiscount), subtotalDecimal);
       }
-      discountAmount = discountAmount.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+      discountAmount = discountAmount.toDecimalPlaces(decimals, Decimal.ROUND_HALF_UP);
     }
 
     const subtotalDecimal = new Decimal(totalSubtotal);
@@ -831,11 +854,11 @@ export async function calculateTaxPreview(req: any, res: any): Promise<void> {
       : new Decimal(1);
     const discountedItemTax = new Decimal(totalTax)
       .mul(taxRatio)
-      .toDecimalPlaces(2, Decimal.ROUND_HALF_UP)
+      .toDecimalPlaces(decimals, Decimal.ROUND_HALF_UP)
       .toNumber();
     const discountedExclusiveTax = new Decimal(totalExclusiveTax)
       .mul(taxRatio)
-      .toDecimalPlaces(2, Decimal.ROUND_HALF_UP)
+      .toDecimalPlaces(decimals, Decimal.ROUND_HALF_UP)
       .toNumber();
 
     const chargeCategories = getConfiguredChargeTaxCategories(tenantInfo.country);
@@ -854,25 +877,26 @@ export async function calculateTaxPreview(req: any, res: any): Promise<void> {
       itemSnapshots: allTaxSnapshots,
       itemTaxRatio: taxRatio.toNumber(),
       chargeTaxes,
+      minorFactor,
     });
-    const aggregatedBreakdown = aggregateTaxBreakdown(taxRollup.breakdowns);
+    const aggregatedBreakdown = aggregateTaxBreakdown(taxRollup.breakdowns, minorFactor);
     const exactTotal = discountedSubtotal
       .plus(taxRollup.exclusiveTaxAmount)
       .plus(packaging)
       .plus(delivery)
       .plus(service)
-      .toDecimalPlaces(2, Decimal.ROUND_HALF_UP)
+      .toDecimalPlaces(decimals, Decimal.ROUND_HALF_UP)
       .toNumber();
     const pack = getActiveCountryPack(tenantInfo.country);
-    const { total, adjustment: roundOff } = applyPayableRounding(exactTotal, pack);
+    const { total, adjustment: roundOff } = applyPayableRounding(exactTotal, pack, currency);
 
     res.json({
       items: itemResults,
       summary: {
-        subtotal: round(totalSubtotal, 2),
+        subtotal: round(totalSubtotal, decimals),
         discount_amount: discountAmount.toNumber(),
         discounted_subtotal: discountedSubtotal.toNumber(),
-        tax_amount: round(taxRollup.taxAmount, 2),
+        tax_amount: round(taxRollup.taxAmount, decimals),
         tax_breakdown: aggregatedBreakdown,
         packaging_charge: packaging,
         delivery_charge: delivery,
@@ -883,6 +907,6 @@ export async function calculateTaxPreview(req: any, res: any): Promise<void> {
     });
   } catch (error: any) {
     console.error('[Tax] Preview error:', error);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(error.statusCode || 500).json({ error: error.statusCode ? error.message : "Internal server error" });
   }
 }

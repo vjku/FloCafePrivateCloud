@@ -2,7 +2,20 @@
 
 All notable changes to Flo Cafe are documented here. Dates are release dates, not commit dates. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
-## [3.5.1] - 2026-09-02
+## [3.5.2] - 2026-09-03
+
+### Added
+- **Money:** Made payments, refunds, and split-checks currency-aware with minor-unit precision, so tenancies with 0- or 3-decimal currencies no longer round errors into the bill balance.
+- **Service charges:** Made service charges server-authoritative, persisted on orders and bills with tax handling.
+- **Tables:** Added live table-occupancy timers and an average table-turn KPI on the tables screen.
+- **Robustness:** Fail closed (rather than silently wiping to empty) when the production database file goes missing at startup (issue #278).
+
+### Changed
+- **Dependencies:** Bumped SQLite, ESLint, and language tooling across backend and frontend.
+
+### Fixed
+- **Printing:** Prevented silent financial receipt omissions and preserved receipt financial parity plus add-on quantities.
+- **POS:** Monetary inputs now respect the tenant currency precision.
 
 ### Added
 - **i18n:** Added German, Tagalog (Filipino) and Turkish language support with complete translation parity; merged upstream helpers keep every locale aligned with English.

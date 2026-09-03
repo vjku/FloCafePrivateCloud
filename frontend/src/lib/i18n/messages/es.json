@@ -204,6 +204,7 @@
   "dashboard": {
     "aov": "Valor Prom. de Pedido",
     "avgPrepTime": "Tiempo Prom. de Preparación",
+    "avgTableTurn": "Rotación Prom. de Mesa",
     "billsCollected": "Facturas Cobradas",
     "busiestDay": "Día Más Ocupado",
     "busiestHour": "Hora Más Ocupada",
@@ -508,6 +509,7 @@
     "deliveryAddress": "Dirección de entrega",
     "discount": "Descuento",
     "discountInvalid": "Ingresá un valor de descuento válido",
+    "fixedDiscountMinimum": "Los descuentos fijos deben ser de al menos 1 unidad",
     "discountReasonPlaceholder": "Motivo (opcional)",
     "discountRemoved": "Descuento eliminado",
     "discountUpdated": "Descuento actualizado",

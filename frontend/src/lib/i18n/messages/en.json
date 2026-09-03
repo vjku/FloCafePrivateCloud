@@ -204,6 +204,7 @@
   "dashboard": {
     "aov": "Avg Order Value",
     "avgPrepTime": "Avg Prep Time",
+    "avgTableTurn": "Avg Table Turn",
     "billsCollected": "Bills Collected",
     "busiestDay": "Busiest Day",
     "busiestHour": "Busiest Hour",
@@ -508,6 +509,7 @@
     "deliveryAddress": "Delivery address",
     "discount": "Discount",
     "discountInvalid": "Please enter a valid discount value",
+    "fixedDiscountMinimum": "Fixed discounts must be at least 1 unit",
     "discountReasonPlaceholder": "Reason (optional)",
     "discountRemoved": "Discount removed",
     "discountUpdated": "Discount updated",

@@ -122,6 +122,7 @@ export interface Table {
   is_active: boolean;
   activeOrder?: Order | null;
   current_order?: Order | null;
+  seated_at?: string | null;
   reservation_customer_id?: number | null;
   reservation_customer_name?: string | null;
   reservation_customer_phone?: string | null;
@@ -157,6 +158,8 @@ export interface Order {
   discount_amount: number;
   delivery_charge: number;
   packaging_charge?: number;
+  /** Server-validated explicit per-order amount; Settings only configures tax treatment. */
+  service_charge: number;
   round_off?: number;
   tax_breakdown?: { title: string; rate: number; amount: number }[] | null;
   tax_snapshot?: TaxSnapshot[] | TaxSnapshot | null;
